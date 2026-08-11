@@ -173,22 +173,29 @@ export function createRobustDemoFunnel(){
     pi++
     return id
   }
-  // Welcome
-  const w1 = makeBlock('text', { content:'The 7-Question Growth Audit', style:{ size:'XL', align:'center', bold:true } })
-  const w2 = makeBlock('text', { content:'Hi {{firstName}} — answer 7 quick questions and get a personalized plan from {{brandName}}. Your score {{score}} unlocks a tailored result.', style:{ size:'M', align:'center' } })
-  const w3 = makeBlock('button', { content:'Start my audit →', style:{ align:'center' } })
-  const wImg = makeBlock('image', { content:'https://picsum.photos/seed/persp-hero7/900/560' })
-  ;[w1,w2,w3,wImg].forEach(b=> map[b.id]=b)
-  addPage('Welcome','welcome',[w1,w2,w3,wImg])
-  // Q1 — stage — icon display
+  // Welcome — editorial hero with pill + gradient-friendly copy
+  const w1 = makeBlock('text', { content:'We find your growth lever in 60 seconds', style:{ size:48, align:'center', bold:true, font:'Fraunces' } })
+  const w2 = makeBlock('text', { content:'Hi {{firstName}} — 7 questions, score {{score}} → a plan from {{brandName}} tailored to your stage.', style:{ size:'M', align:'center', color:{kind:'token', slot:2} } })
+  const wPill = makeBlock('text', { content:'<span style="display:inline-flex;gap:8px;align-items:center;background:#fff;border:1px solid #e8e6e1;border-radius:99px;padding:6px 12px;font-size:12px;font-weight:600;letter-spacing:.02em">● 7 questions · 2 min · personalized</span>', style:{ size:'M', align:'center' } })
+  const w3 = makeBlock('button', { content:'Start my audit →', style:{ align:'center', bold:true } })
+  const wImg = makeBlock('image', { content:'https://picsum.photos/seed/persp-hero7/900/560', dropShadow:true })
+  ;[w1,w2,wPill,w3,wImg].forEach(b=> map[b.id]=b)
+  addPage('Welcome','welcome',[w1,w2,wPill,w3,wImg])
+  // Q1 — stage — icon display, larger question
   const q1 = mkQuiz('What best describes your business right now?', [
     {label:'Just getting started', score:1, tags:['starter'], icon:'🌱', reportHeadline:'Early stage — foundation first', reportBody:'Hi {{firstName}}, you’re laying the groundwork. Focus on clear positioning before scaling. Score: {{score}}.', insightLabel:'Starter checklist', insightUrl:'https://example.com/starter'},
     {label:'Growing steadily', score:3, tags:['growth'], icon:'🌿', reportHeadline:'Growth mode — optimize', reportBody:'You have traction, {{firstName}}. Now tighten conversion and repeat what works. Tag: growth.', insightLabel:'Growth playbook', insightUrl:'https://example.com/growth'},
     {label:'Scaling fast', score:6, tags:['scale','qualified'], icon:'🚀', reportHeadline:'Scale — systems needed', reportBody:'Scaling fast is exciting. Score {{score}} suggests you need systems. {{brandName}} can automate follow-up.', insightLabel:'Scale guide', insightUrl:'https://example.com/scale'},
     {label:'Enterprise level', score:10, tags:['enterprise','qualified'], icon:'🏢', reportHeadline:'Enterprise — bespoke', reportBody:'Enterprise, {{firstName}} — your {{quizName}} score {{score}} qualifies for 1:1 strategy.', insightLabel:'Enterprise consult', insightUrl:'https://example.com/enterprise'},
   ], {optionDisplay:'icon', autoAdvance:false})
+  q1.q.style.size = 24
+  q1.q.style.bold = true
   ;[q1.q, ...q1.answers].forEach(b=> map[b.id]=b)
-  addPage('Q1 — Stage','q1',[q1.q])
+  const q1Help = makeBlock('text', { content:'Your tags shape the result — honest answers only.', style:{ size:14, align:'center', italic:true, color:{kind:'solid', hex:'#6b6b6b'} } })
+  map[q1Help.id]=q1Help
+  addPage('Q1 — Stage','q1',[q1.q, q1Help])
+  // give Q1 a gradient page to break monotone
+  pages[pages.length-1].background = {kind:'gradient', from:'#fff1f2', to:'#ffffff', angle:180}
   // Q2 — team size — text
   const q2 = mkQuiz('How large is your team?', [
     {label:'Just me', score:1, tags:['solo'], icon:'👤', reportBody:'Solo operator — leverage automation.'},
@@ -198,15 +205,19 @@ export function createRobustDemoFunnel(){
   ], {optionDisplay:'text'})
   ;[q2.q, ...q2.answers].forEach(b=> map[b.id]=b)
   addPage('Q2 — Team','q2',[q2.q])
-  // Q3 — revenue — image display
+  // Q3 — revenue — image display + contextual image to showcase shadow
   const q3 = mkQuiz('What’s your monthly revenue?', [
     {label:'< $10k', score:1, tags:['starter']},
     {label:'$10k – $50k', score:4, tags:['growth']},
     {label:'$50k – $250k', score:7, tags:['scale','qualified']},
     {label:'$250k+', score:10, tags:['enterprise','qualified']},
   ], {optionDisplay:'image', autoAdvance:false})
+  q3.q.style.size = 22
   ;[q3.q, ...q3.answers].forEach(b=> map[b.id]=b)
-  addPage('Q3 — Revenue','q3',[q3.q])
+  const q3Img = makeBlock('image', { content:'https://picsum.photos/seed/revenue-7q/720/380', dropShadow:true })
+  map[q3Img.id]=q3Img
+  addPage('Q3 — Revenue','q3',[q3.q, q3Img])
+  pages[pages.length-1].background = {kind:'gradient', from:'#fff1f2', to:'#ffffff', angle:180}
   // Q4 — challenge — icon
   const q4 = mkQuiz('What’s your biggest challenge right now?', [
     {label:'Getting more traffic', score:2, tags:['traffic'], icon:'lucide:trending-up', reportBody:'Traffic is the top constraint — fix acquisition first.'},
@@ -225,7 +236,7 @@ export function createRobustDemoFunnel(){
   ], {optionDisplay:'text', autoAdvance:true})
   ;[q5.q, ...q5.answers].forEach(b=> map[b.id]=b)
   addPage('Q5 — Timeline','q5',[q5.q])
-  // Q6 — budget — icon
+  // Q6 — budget — icon + image showcase
   const q6 = mkQuiz('What’s your marketing budget?', [
     {label:'< $1k / mo', score:1, tags:['starter'] , icon:'💵'},
     {label:'$1k – $5k', score:3, tags:['growth'], icon:'💰'},
@@ -233,16 +244,22 @@ export function createRobustDemoFunnel(){
     {label:'$25k+ / mo', score:10, tags:['enterprise','qualified'], icon:'🏦', reportHeadline:'Enterprise budget', reportBody:'Enterprise budget qualifies for done-for-you. Score {{score}}.'},
   ], {optionDisplay:'icon'})
   ;[q6.q, ...q6.answers].forEach(b=> map[b.id]=b)
-  addPage('Q6 — Budget','q6',[q6.q])
-  // Q7 — commitment — image+text
+  const q6Img = makeBlock('image', { content:'https://picsum.photos/seed/budget-7q/720/360', dropShadow:true })
+  map[q6Img.id]=q6Img
+  addPage('Q6 — Budget','q6',[q6.q, q6Img])
+  // Q7 — commitment — image+text, hero question
   const q7 = mkQuiz('How committed are you to fixing this now? ({{brandName}})', [
     {label:'Curious — just looking', score:1, tags:['low-intent'], icon:'👀'},
     {label:'Interested — need details', score:3, tags:['warm']},
     {label:'Ready — have time & budget', score:7, tags:['hot','qualified'], icon:'✅', reportHeadline:'Ready — let’s move', reportBody:'Ready is 80% of success, {{firstName}}. Score {{score}} — we’ll hold a spot.'},
     {label:'All in — start today', score:10, tags:['urgent','enterprise','qualified'], icon:'🔥', reportHeadline:'All in 🔥', reportBody:'All-in commitment unlocks {{brandName}} fast-track. Score {{score}} — {{quizName}} says now.', insightLabel:'Start now', insightUrl:'https://example.com/start'},
   ], {optionDisplay:'image', autoAdvance:false})
+  q7.q.style.size = 24
+  q7.q.style.bold = true
   ;[q7.q, ...q7.answers].forEach(b=> map[b.id]=b)
-  addPage('Q7 — Commitment','q7',[q7.q])
+  const q7Note = makeBlock('text', { content:'<span style="background:#fff1f2;border:1px solid #fecaca;color:#831843;border-radius:99px;padding:6px 12px;font-size:12px;font-weight:600">Your answer here weights the result most</span>', style:{ size:'M', align:'center' } })
+  map[q7Note.id]=q7Note
+  addPage('Q7 — Commitment','q7',[q7.q, q7Note])
   // Lead capture — multi-field demo
   const capHead = makeBlock('text', { content:'Get your personalized plan — {{brandName}}', style:{ size:'L', align:'center', bold:true } })
   const capSub = makeBlock('text', { content:'Your score {{score}} and tags determine the result. Leave your details — we’ll send the detailed report (with {{firstName}} merge).', style:{ size:'M', align:'center' } })
