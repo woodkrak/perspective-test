@@ -23,11 +23,12 @@
 ## Data Model
 ```js
 Funnel { id, name, themeId, settings, pages[], results[], messages[], blocksById{}, themes[] }
-Page { id, index, name, slug, confetti, blocks: string[], background: {kind:'token'|'solid'|'gradient'} }
+Page { id, index, name, slug, confetti, blocks: string[], background: {kind:'token'|'solid'|'gradient'}, desktopLayout:{mode:'stack'|'split', ratio:'50/50'|'60/40'|'40/60'|'70/30'} }
 Block { id, type, parentId, order, content, style, styleOverrides, trackingId, linking, resultRef, children: string[] }
-Theme { id, name, font, colors: [4], radius, transition, disableAnimation, isSystem }
-Settings { progressBar, cookieBanner, socialTitle/Desc, favicon, language, funnelBackground }
-ColorRef { kind:'token' slot 0=transparent|1-4 | 'solid' hex | 'gradient' {from,to,angle} }
+Theme { id, name, font, colors: [4], radius, transition, transitionDuration, disableAnimation, isSystem }
+Settings { progressBar, cookieBanner, socialTitle/Desc, favicon, language, funnelBackground, startCta, brandName, category, subtitle, autoAdvance, autoAdvanceDelayMs, legal, progressStyle }
+Quiz: Block.content { question } + optionDisplay:'text'|'icon'|'image'|'card-photo'|'card-icon', autoAdvance, autoAdvanceDelayMs, multiSelect, cardColor, cardTextColor, cardTextSize, cardTextFont, cardLayout:'grid'|'stack'|'2col'
+Answer: score, tags, icon, reportHeadline/Body, insightUrl/Label
 ```
 
 **Normalized** `blocksById` + `pages[].blocks` (childIds). Quiz answers are child `answer` blocks (`parentId=quizId`, `quiz.children=[answerIds]`). Serialized inverted commands enable undo/redo/autosave/multiplayer.
@@ -35,16 +36,17 @@ ColorRef { kind:'token' slot 0=transparent|1-4 | 'solid' hex | 'gradient' {from,
 ## Key Behaviors
 - **Selection:** 3 states — hover (dashed+grey badge), selected (blue outline+blue badge+toolbar+panel+URL), editing (contentEditable caret on 2nd click). `selectedBlockId` auto-flips rail to Design; Esc deselects. 150ms pointer block after rail swap prevents accidental clicks.
 - **Toolbar:** Portal `fixed` over `.canvas-wrap` (avoids `overflow:hidden` clip): +add underneath, ≡move (drag), ⧉duplicate (⌘D), 📋copy (⌘C), 🗑delete (Del). Child answers lose add/copy.
-- **Canvas:** In-document DOM (`contentEditable`), not iframe. Device chrome (`mobile 390×844 / tablet 834×1194 / desktop 960×640`) with scale `min(1, availW/outerW, availH/outerH)`, outer bezel + notch/tablet-pill/browser-bar. `canvas-inner` scrolls. Progress bar pill inside chrome.
+- **Canvas:** Device chrome (`mobile 390×844 / tablet 834×1194↔1194×834 landscape / desktop 1120×700`) with `scale min(1, avail/outer)`, `canvas-inner` centered vertically on tablet/desktop (`safe center`) with `maxWidth 680/760` + `fontScale 1.32/1.48`, images capped `280/320px`, `isLandscape` swaps tablet w/h. Progress pill + banner. `pageBgInner` keyed `page-anim pt-*` with `transitionDuration`.
 - **Add flow:** `+` bottom → fires `open-library` → rail `add` mode (Basic/Interactive/Sections). Tile click creates `previewBlock` (+ `_extra` for quiz 4 answers) with dashed preview + `✓/✕` confirm bar (bottom -18px). Confirm dispatches `ADD_BLOCK` (+ `extraBlocks`). Guard `safeSetPreview` prevents overwrite until confirmed.
 - **Theming:** Scoped via `document.documentElement.style.setProperty('--theme-*', theme.colors[i])`. `resolveColor/resolveBg` map token→`theme.colors[slot-1]`, transparent=`slot 0`. `buttonBg` tones `#111`→`#4a4a4a`. Page bg → `canvas-frame` inner; funnel bg → `canvas-wrap`.
 - **Video:** `video` type stores URL string; left rail `Video URL` input auto-converts youtube `watch?v|youtu.be → /embed/`, vimeo, mp4 (`<video>` vs `<iframe 16/9>`). Preview chips for demos.
 - **Rich text:** Text/quiz/answer/button store `innerHTML` (not textContent); `InlineToolbar` (B/I/U/◧ highlight/✕ clear via `execCommand`) floats above selection while editing; `⌘B/I/U` native. Block-level style (size/bold/italic/underline/align) still applies; `lineHeight` slider `1→2.2 step 0.05` per text-like block (`style.lineHeight`, default 1.45).
-- **Themes (7):** Editorial, Minimal, Sunset, Ocean, Party (`#fff1f2/#831843/#ec4899/#8b5cf6` Fraunces), AI Nebula (`#faf5ff/#2e1065/#7c3aed` JetBrains Mono), AI Vector (`#010d03/#00ff41/#22c55e` Asteroids CRT, JetBrains Mono). `migratePersisted` merges missing system themes.
-- **Persistence:** `localStorage perspective:funnel:v3` (v2 fallback), `migratePersisted` fixes phantom pages, invisible quiz/answer (`slot1→2`), empty p3. Hydrated-ref gates autosave + URL write. Deep-link read on mount.
+- **Themes (7):** Editorial, Minimal, Sunset, Ocean, Party (`#fff1f2/#831843/#ec4899/#8b5cf6` Fraunces), AI Nebula (`#faf5ff/#2e1065/#7c3aed` JetBrains Mono), AI Vector (`#010d03/#00ff41/#22c55e` Asteroids CRT, JetBrains Mono). `migratePersisted` merges missing system themes + `transitionDuration:380`, `desktopLayout`, `card*`.
+- **Persistence:** `localStorage perspective:funnel:v3` (v2 fallback), `migratePersisted` fixes phantom pages, invisible quiz/answer (`slot1→2`), empty p3, backfills `card*`/`multiSelect`. Hydrated-ref gates autosave + URL write. Deep-link read on mount.
+- **Quiz parity (this session):** Scoring/tags per answer, `collectScoreAndTags`/`resolveResultId`/`interpolateTokens` (merge `{{score}}`/`{{firstName}}` etc), `card-photo`/`card-icon` with `grid/stack/2col` + odd-centered `auto-fit`, bottom `28%` solid `cardColor` + `cardText*`, `multiSelect` array scoring, `autoAdvance` global+per-quiz, `page.desktopLayout` split `50/50-70/30` (headline/media left, quiz right on desktop), `transition`+`duration`+`confetti` (126 pieces burst+fall, front `z20`, smooth).
 
 ## Conventions
-- Actions via `funnelReducer`: `REHYDRATE, SET_FUNNEL_NAME, SET_THEME, UPDATE_THEME, CREATE_THEME, FORK_THEME, DELETE_THEME, ADD_PAGE, DUPLICATE_PAGE, DELETE_PAGE, RENAME_PAGE, ADD_RESULT, DELETE_RESULT, ADD_BLOCK, UPSERT_BLOCKS, UPDATE_BLOCK, UPDATE_BLOCK_CONTENT, UPDATE_BLOCK_STYLE, DELETE_BLOCK, DUPLICATE_BLOCK, MOVE_BLOCK, UPDATE_PAGE_BACKGROUND, UPDATE_FUNNEL_BACKGROUND`
+- Actions via `funnelReducer`: `REHYDRATE, SET_FUNNEL_NAME, SET_THEME, UPDATE_THEME, CREATE_THEME, FORK_THEME, DELETE_THEME, ADD_PAGE, DUPLICATE_PAGE, DELETE_PAGE, RENAME_PAGE, UPDATE_PAGE_LAYOUT, ADD_RESULT, DELETE_RESULT, ADD_BLOCK, UPSERT_BLOCKS, UPDATE_BLOCK, UPDATE_BLOCK_CONTENT, UPDATE_BLOCK_STYLE, DELETE_BLOCK, DUPLICATE_BLOCK, MOVE_BLOCK, UPDATE_PAGE_BACKGROUND, UPDATE_FUNNEL_BACKGROUND, UPDATE_SETTINGS, UPDATE_LEGAL`
 - Color helpers: `resolveColor`, `resolveBg`, `buttonBg`
 - CSS classes: `.shell/.topbar/.main/.rail/.canvas-wrap/.canvas-frame/.canvas-inner/.block/.badge/.block-toolbar-portal/.canvas-toolbar/.panel/.picker/.confirm-bar`
 - No floating popovers/right inspector — in-rail panels only; CSS variables for theming
@@ -72,7 +74,7 @@ npm run lint
 
 ## Roadmap (from build sheet)
 - Phases 0-7 shell + 5 interactions + canvas/library/panels → done
-- Page/funnel backgrounds, video URL, party/AI themes, inline formatting, line-height → done (this session)
+- Page/funnel backgrounds, video URL, party/AI themes, inline formatting, line-height, desktop split (Q7 60/40), question cards (photo/icon), confetti polish → done (this session)
 - Remaining polish: section library live previews, A/B branching, contacts/metrics/apps tabs, OG publish flow
 
 ## Session Preferences
