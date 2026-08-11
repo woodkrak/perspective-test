@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { FunnelProvider, useFunnel, interpolateTokens, collectScoreAndTags, resolveResultId } from './store.jsx'
+import { FunnelProvider, useFunnel, interpolateTokens, collectScoreAndTags, resolveResultId, createRobustDemoFunnel } from './store.jsx'
 import './App.css'
 
 function SettingsModal({ onClose }){
@@ -347,7 +347,7 @@ function PreviewModal({ onClose }){
 }
 
 function TopBar({ onOpenLibrary }){
-  const { funnel, dispatch, published, setPublished } = useFunnel()
+  const { funnel, dispatch, published, setPublished, setSelectedPageId, setSelectedBlockId } = useFunnel()
   const [editingName, setEditingName] = useState(false)
   const [nameDraft, setNameDraft] = useState(funnel.name)
   const [showSettings,setShowSettings]=useState(false)
@@ -375,6 +375,13 @@ function TopBar({ onOpenLibrary }){
           </div>
         </div>
         <div className="topbar-right">
+          <button className="chip" title="Load robust 7-question demo (scoring, tags, icons, report, tokens)" onClick={()=>{
+            if(!confirm('Load 7-question robust demo? This replaces the current funnel (undoable).')) return
+            const demo = createRobustDemoFunnel()
+            dispatch({type:'REHYDRATE', payload: demo})
+            setSelectedPageId(demo.pages[0].id)
+            setSelectedBlockId(null)
+          }} style={{background:'#fff7ed',borderColor:'#fdba74',color:'#9a3412',fontWeight:700,borderRadius:99,padding:'6px 12px',fontSize:12,cursor:'pointer'}}>✦ 7Q Demo</button>
           <button className="icon-btn" title="Preview funnel without recording data" onClick={()=>setShowPreview(true)} style={{width:'auto',height:36,borderRadius:99,display:'flex',alignItems:'center',gap:6,padding:'0 14px',fontSize:13,fontWeight:600,background:'#111',color:'#fff',borderColor:'#111'}}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
             Preview

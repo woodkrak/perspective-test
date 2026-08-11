@@ -129,6 +129,155 @@ function initialFunnel(){
   }
 }
 
+export function createRobustDemoFunnel(){
+  const mkQuiz = (question, opts, cfg={})=>{
+    const answers = opts.map(o=>{
+      const a = makeBlock('answer', {
+        content: o.label,
+        score: o.score ?? 0,
+        tags: o.tags ?? [],
+        icon: o.icon ?? '',
+        reportHeadline: o.reportHeadline ?? '',
+        reportBody: o.reportBody ?? '',
+        insightLabel: o.insightLabel ?? '',
+        insightUrl: o.insightUrl ?? '',
+      })
+      return a
+    })
+    const q = makeBlock('quiz', {
+      content:{ question },
+      optionDisplay: cfg.optionDisplay ?? 'text',
+      autoAdvance: cfg.autoAdvance ?? false,
+      autoAdvanceDelayMs: cfg.autoAdvanceDelayMs ?? 600,
+      children: answers.map(a=>a.id)
+    })
+    answers.forEach(a=> a.parentId = q.id)
+    q.children = answers.map(a=>a.id)
+    return { q, answers }
+  }
+  const map={}
+  const pages=[]
+  let pi=1
+  const addPage = (name, slug, blocks, bgSlot=1)=>{
+    const id='p'+pi
+    pages.push({ id, index:pi, name, slug, confetti: pi===8, blocks: blocks.map(b=>b.id), background:{kind:'token', slot:bgSlot}})
+    pi++
+    return id
+  }
+  // Welcome
+  const w1 = makeBlock('text', { content:'The 7-Question Growth Audit', style:{ size:'XL', align:'center', bold:true } })
+  const w2 = makeBlock('text', { content:'Hi {{firstName}} — answer 7 quick questions and get a personalized plan from {{brandName}}. Your score {{score}} unlocks a tailored result.', style:{ size:'M', align:'center' } })
+  const w3 = makeBlock('button', { content:'Start my audit →', style:{ align:'center' } })
+  const wImg = makeBlock('image', { content:'https://picsum.photos/seed/persp-hero7/900/560' })
+  ;[w1,w2,w3,wImg].forEach(b=> map[b.id]=b)
+  addPage('Welcome','welcome',[w1,w2,w3,wImg])
+  // Q1 — stage — icon display
+  const q1 = mkQuiz('What best describes your business right now?', [
+    {label:'Just getting started', score:1, tags:['starter'], icon:'🌱', reportHeadline:'Early stage — foundation first', reportBody:'Hi {{firstName}}, you’re laying the groundwork. Focus on clear positioning before scaling. Score: {{score}}.', insightLabel:'Starter checklist', insightUrl:'https://example.com/starter'},
+    {label:'Growing steadily', score:3, tags:['growth'], icon:'🌿', reportHeadline:'Growth mode — optimize', reportBody:'You have traction, {{firstName}}. Now tighten conversion and repeat what works. Tag: growth.', insightLabel:'Growth playbook', insightUrl:'https://example.com/growth'},
+    {label:'Scaling fast', score:6, tags:['scale','qualified'], icon:'🚀', reportHeadline:'Scale — systems needed', reportBody:'Scaling fast is exciting. Score {{score}} suggests you need systems. {{brandName}} can automate follow-up.', insightLabel:'Scale guide', insightUrl:'https://example.com/scale'},
+    {label:'Enterprise level', score:10, tags:['enterprise','qualified'], icon:'🏢', reportHeadline:'Enterprise — bespoke', reportBody:'Enterprise, {{firstName}} — your {{quizName}} score {{score}} qualifies for 1:1 strategy.', insightLabel:'Enterprise consult', insightUrl:'https://example.com/enterprise'},
+  ], {optionDisplay:'icon', autoAdvance:false})
+  ;[q1.q, ...q1.answers].forEach(b=> map[b.id]=b)
+  addPage('Q1 — Stage','q1',[q1.q])
+  // Q2 — team size — text
+  const q2 = mkQuiz('How large is your team?', [
+    {label:'Just me', score:1, tags:['solo'], icon:'👤', reportBody:'Solo operator — leverage automation.'},
+    {label:'2–5 people', score:3, tags:['small-team'], icon:'👥'},
+    {label:'6–20 people', score:6, tags:['mid-team','qualified'], icon:'🏢', reportHeadline:'Mid-team — process matters', reportBody:'Team of 6–20, {{firstName}} — process is your bottleneck.'},
+    {label:'20+ people', score:10, tags:['large-team','enterprise'], icon:'🌐', reportHeadline:'Large team — orchestration', reportBody:'Large team score {{score}} — align on one funnel.'},
+  ], {optionDisplay:'text'})
+  ;[q2.q, ...q2.answers].forEach(b=> map[b.id]=b)
+  addPage('Q2 — Team','q2',[q2.q])
+  // Q3 — revenue — image display
+  const q3 = mkQuiz('What’s your monthly revenue?', [
+    {label:'< $10k', score:1, tags:['starter']},
+    {label:'$10k – $50k', score:4, tags:['growth']},
+    {label:'$50k – $250k', score:7, tags:['scale','qualified']},
+    {label:'$250k+', score:10, tags:['enterprise','qualified']},
+  ], {optionDisplay:'image', autoAdvance:false})
+  ;[q3.q, ...q3.answers].forEach(b=> map[b.id]=b)
+  addPage('Q3 — Revenue','q3',[q3.q])
+  // Q4 — challenge — icon
+  const q4 = mkQuiz('What’s your biggest challenge right now?', [
+    {label:'Getting more traffic', score:2, tags:['traffic'], icon:'lucide:trending-up', reportBody:'Traffic is the top constraint — fix acquisition first.'},
+    {label:'Converting visitors', score:4, tags:['conversion','qualified'], icon:'lucide:target', reportHeadline:'Conversion — the lever', reportBody:'Conversion at {{score}} pts — your landing copy needs testing.'},
+    {label:'Retaining customers', score:3, tags:['retention'], icon:'lucide:heart', reportBody:'Retention — nurture beats acquisition.'},
+    {label:'Hiring & ops', score:6, tags:['ops','enterprise'], icon:'lucide:users'},
+  ], {optionDisplay:'icon', autoAdvance:true, autoAdvanceDelayMs:800})
+  ;[q4.q, ...q4.answers].forEach(b=> map[b.id]=b)
+  addPage('Q4 — Challenge','q4',[q4.q])
+  // Q5 — timeline — text
+  const q5 = mkQuiz('How soon do you want results?', [
+    {label:'Just exploring', score:1, tags:['low-intent']},
+    {label:'In the next 3 months', score:3, tags:['warm']},
+    {label:'In the next 30 days', score:6, tags:['hot','qualified']},
+    {label:'This week — urgent', score:10, tags:['urgent','qualified'], icon:'⏰', reportHeadline:'Urgent — fast lane', reportBody:'Urgent timeline, {{firstName}} — we’ll prioritize your {{brandName}} onboarding.'},
+  ], {optionDisplay:'text', autoAdvance:true})
+  ;[q5.q, ...q5.answers].forEach(b=> map[b.id]=b)
+  addPage('Q5 — Timeline','q5',[q5.q])
+  // Q6 — budget — icon
+  const q6 = mkQuiz('What’s your marketing budget?', [
+    {label:'< $1k / mo', score:1, tags:['starter'] , icon:'💵'},
+    {label:'$1k – $5k', score:3, tags:['growth'], icon:'💰'},
+    {label:'$5k – $25k', score:7, tags:['scale','qualified'], icon:'💎', reportHeadline:'Healthy budget — scale', reportBody:'With ${{score}} pts budget, {{brandName}} ROI is strongest.'},
+    {label:'$25k+ / mo', score:10, tags:['enterprise','qualified'], icon:'🏦', reportHeadline:'Enterprise budget', reportBody:'Enterprise budget qualifies for done-for-you. Score {{score}}.'},
+  ], {optionDisplay:'icon'})
+  ;[q6.q, ...q6.answers].forEach(b=> map[b.id]=b)
+  addPage('Q6 — Budget','q6',[q6.q])
+  // Q7 — commitment — image+text
+  const q7 = mkQuiz('How committed are you to fixing this now? ({{brandName}})', [
+    {label:'Curious — just looking', score:1, tags:['low-intent'], icon:'👀'},
+    {label:'Interested — need details', score:3, tags:['warm']},
+    {label:'Ready — have time & budget', score:7, tags:['hot','qualified'], icon:'✅', reportHeadline:'Ready — let’s move', reportBody:'Ready is 80% of success, {{firstName}}. Score {{score}} — we’ll hold a spot.'},
+    {label:'All in — start today', score:10, tags:['urgent','enterprise','qualified'], icon:'🔥', reportHeadline:'All in 🔥', reportBody:'All-in commitment unlocks {{brandName}} fast-track. Score {{score}} — {{quizName}} says now.', insightLabel:'Start now', insightUrl:'https://example.com/start'},
+  ], {optionDisplay:'image', autoAdvance:false})
+  ;[q7.q, ...q7.answers].forEach(b=> map[b.id]=b)
+  addPage('Q7 — Commitment','q7',[q7.q])
+  // Lead capture
+  const capHead = makeBlock('text', { content:'Get your personalized plan — {{brandName}}', style:{ size:'L', align:'center', bold:true } })
+  const capSub = makeBlock('text', { content:'Your score {{score}} and tags determine the result. Drop your email — we’ll send the detailed report (with {{firstName}} merge).', style:{ size:'M', align:'center' } })
+  const capForm = makeBlock('form', { content:{ label:'Work email', placeholder:'you@company.com' } })
+  ;[capHead, capSub, capForm].forEach(b=> map[b.id]=b)
+  addPage('Lead capture','capture',[capHead, capSub, capForm])
+  // Results — 3 with score/tag rules
+  const rA = { id:'rA', letter:'A', name:'Starter — Foundations', selectionRules:[
+    {conditions:[{operator:'score_lte', value:'12'}]},
+  ]}
+  const rB = { id:'rB', letter:'B', name:'Growth — Optimization', selectionRules:[
+    {conditions:[{operator:'score_between', value:'13,24'}]},
+    {conditions:[{operator:'has_tag', value:'growth'}]},
+  ]}
+  const rC = { id:'rC', letter:'C', name:'Scale — Enterprise', selectionRules:[
+    {conditions:[{operator:'score_gte', value:'25'}]},
+    {conditions:[{operator:'has_tag', value:'enterprise'}]},
+  ]}
+  // Link some answers directly to results as fallback (first answer of each tier)
+  q1.answers[0].resultRef='rA'; q1.answers[1].resultRef='rB'; q1.answers[2].resultRef='rC'; q1.answers[3].resultRef='rC'
+  return {
+    id:'f-demo-7q', name:'7-Question Growth Audit — Demo',
+    themeId:'t5',
+    settings:{
+      progressBar:true, progressStyle:'bar', cookieBanner:true,
+      socialTitle:'7-Question Growth Audit', socialDesc:'7 questions → score + tags → tailored result. Demo of scoring, icons, autoAdvance, legal, tokens.', favicon:'', language:'en', funnelBackground:{kind:'token', slot:0},
+      startCta:'Start my audit', brandName:'Perspective Demo', category:'SaaS', subtitle:'Score + tags drive the result — {{score}} determines A/B/C',
+      autoAdvance:false, autoAdvanceDelayMs:700,
+      legal:{ bannerText:'Demo quiz — scoring + tags + icons + tokens live. Try Preview.', footerDisclaimer:'© 2026 Perspective Demo — demo data, not real advice.', privacyUrl:'https://example.com/privacy', termsUrl:'https://example.com/terms' },
+    },
+    pages, results:[rA,rB,rC],
+    messages:[
+      { id:'m1', name:'Demo nurture', status:'offline', sequence:[
+        { id:'n1', type:'trigger', label:'Funnel completed' },
+        { id:'n2', type:'delay', label:'Wait 5 min', delayMs:300000 },
+        { id:'n3', type:'email', label:'Your score & plan', from:'hello@perspective.demo', to:'Contact', subject:'Hi {{firstName}} — your score {{score}} is ready ({{brandName}})', body:'Hi {{firstName}},\n\nYour {{quizName}} score is {{score}}.\n{{brandName}} picked result {{category}}.\n\nCollected tags drive this. Reply to book.', bodyBlocks:[], recipientMode:'lead', staffEmails:'' },
+        { id:'n4', type:'email', label:'Staff alert — hot lead', from:'hello@perspective.demo', to:'Staff', subject:'New qualified lead — {{score}} pts', body:'Lead {{firstName}} {{email}} scored {{score}} — tags: hot/qualified. Check CRM.', bodyBlocks:[], recipientMode:'staff', staffEmails:'founders@perspective.demo, sales@perspective.demo' },
+      ]},
+    ],
+    blocksById: map,
+    themes: THEMES,
+  }
+}
+
 function deepClone(o){ return JSON.parse(JSON.stringify(o)) }
 
 // --- Parity helpers: merge tokens, scoring, result selection ---
