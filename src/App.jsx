@@ -295,7 +295,7 @@ function PreviewModal({ onClose }){
                   : f.type==='checkbox' ? <label style={{display:'flex',gap:6,alignItems:'center',fontSize:13}}><input type="checkbox" required={f.required}/> {f.label||f.placeholder}</label>
                   : f.type==='file' ? <input type="file" required={f.required} style={{fontSize:13}} />
                   : <input type={f.type==='phone'?'tel':f.type} placeholder={f.placeholder} required={f.required} style={{border:'1px solid var(--line)',borderRadius:8,padding:'8px 10px',fontSize:13}} />}
-                  {f.helperText && <div style={{fontSize:11,color:'var(--faint)'}}>{f.helperText}</div>}
+                  {f.helperText && <div style={{fontSize:11,color:'var(--muted)'}}>{f.helperText}</div>}
                 </div>
               ))}
               <button className="btn btn-filled" style={{background:buttonBg(theme),alignSelf:'stretch'}} onClick={goNext}>{b.content?.submitLabel||'Continue'}</button>
@@ -1126,7 +1126,7 @@ function PropertyPanel({ block, theme, funnel }){
             <div className="control-row">
               <div className="control-label">Image URL</div>
               <input className="input" value={typeof block.content==='string' && !block.content.startsWith('icon:')?block.content:''} onChange={e=>dispatch({type:'UPDATE_BLOCK_CONTENT', id:block.id, content:e.target.value})} placeholder="https://..." />
-              <div style={{fontSize:11,color:'var(--faint)'}}>Drag & drop · Max 10MB; .png .jpg .webp .gif</div>
+              <div style={{fontSize:11,color:'var(--muted)'}}>Drag & drop · Max 10MB; .png .jpg .webp .gif</div>
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6,marginTop:6}}>
                 {['persp','nature','city','art'].map(s=>(
                   <button key={s} style={{height:56,borderRadius:8,overflow:'hidden',border:'1px solid var(--line)',padding:0}} onClick={()=>dispatch({type:'UPDATE_BLOCK_CONTENT', id:block.id, content:`https://picsum.photos/seed/${s}-${Math.floor(Math.random()*999)}/400/300`})}>
@@ -1149,6 +1149,14 @@ function PropertyPanel({ block, theme, funnel }){
           <div className="control-row">
             <div className="control-label">Crop</div>
             <select className="select" defaultValue="cover"><option>Cover</option><option>Contain</option></select>
+          </div>
+          <div className="control-row">
+            <div className="control-label">Appearance</div>
+            <label className="row" style={{fontSize:12,gap:8}}>
+              <span className={`toggle ${block.dropShadow ?? true ? 'on':''}`} onClick={()=>dispatch({type:'UPDATE_BLOCK', id:block.id, patch:{dropShadow: !(block.dropShadow ?? true)}})}><i/></span>
+              Clean drop shadow
+            </label>
+            <div style={{fontSize:11,color:'var(--muted)'}}>{block.dropShadow ?? true ? 'On — subtle elevation' : 'Off — flat, no shadow'}</div>
           </div>
         </>
       )}
@@ -1812,7 +1820,8 @@ function BlockRenderer({ blockId, depth=0, onSelect }){
     if(String(block.content).startsWith('icon:')){
       inner = <div style={{fontSize:48, textAlign:'center', padding:20, color}}>{String(block.content).slice(5)}</div>
     } else {
-      inner = <div className="img-wrap" style={{borderRadius: radius}}><img src={block.content} alt="" draggable={false} /></div>
+      const hasShadow = block.dropShadow ?? true
+      inner = <div className="img-wrap" style={{borderRadius: radius, boxShadow: hasShadow ? '0 4px 16px rgba(0,0,0,.08), 0 1px 3px rgba(0,0,0,.05)' : 'none', overflow:'hidden'}}><img src={block.content} alt="" draggable={false} style={{display:'block', width:'100%', height:'auto'}} /></div>
     }
   } else if(block.type==='divider'){
     inner = <div className="divider" />
@@ -1865,7 +1874,7 @@ function BlockRenderer({ blockId, depth=0, onSelect }){
           ) : (
             <input type={f.type==='phone' ? 'tel' : f.type} placeholder={f.placeholder} required={f.required} style={{border:'1px solid var(--line)',borderRadius:8,padding:'8px 10px',fontSize:13}} />
           )}
-          {f.helperText && <div style={{fontSize:11,color:'var(--faint)'}}>{f.helperText}</div>}
+          {f.helperText && <div style={{fontSize:11,color:'var(--muted)'}}>{f.helperText}</div>}
         </div>
       ))}
       <button className="btn btn-filled" style={{background:buttonBg(theme),fontFamily: headlineFont}}>{block.content?.submitLabel||'Continue'}</button>

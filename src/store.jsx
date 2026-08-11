@@ -45,6 +45,9 @@ const makeBlock = (type, extra={}) => {
     base.autoAdvance = extra.autoAdvance ?? false
     base.autoAdvanceDelayMs = extra.autoAdvanceDelayMs ?? 600
   }
+  if(type==='image'){
+    base.dropShadow = extra.dropShadow ?? true
+  }
   return { ...base, ...extra }
 }
 
@@ -423,6 +426,9 @@ function migratePersisted(saved){
         if(!b.optionDisplay) b.optionDisplay='text'
         if(b.autoAdvance===undefined) b.autoAdvance=false
         if(b.autoAdvanceDelayMs===undefined) b.autoAdvanceDelayMs=600
+      }
+      if(b.type==='image'){
+        if(b.dropShadow===undefined) b.dropShadow = true
       }
       // Form: migrate legacy {label,placeholder} → {fields:[], formTitle, submitLabel}
       if(b.type==='form'){
