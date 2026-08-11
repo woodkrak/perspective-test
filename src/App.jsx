@@ -245,16 +245,15 @@ function PreviewModal({ onClose }){
   }
   const animClass = (!theme.disableAnimation && theme.transition && theme.transition!=='none') ? `page-anim pt-${theme.transition}` : ''
   const previewDur = theme.transitionDuration ?? 380
-  const PreviewContent = (
-    <>
-      <div key={page?.id} className={animClass} style={{display:'flex',flexDirection:'column',gap:10,marginTop:4, ...(animClass ? {animationDuration: `${previewDur}ms`} : {})}}>
-        {(page?.blocks||[]).map(bid=>{
-          const b = funnel.blocksById[bid]; if(!b) return null
-          const ctx = { brandName: funnel.settings.brandName, quizName: funnel.name, funnelName: funnel.name, score: collectScoreAndTags(funnel, answers).score, firstName:'there', email:'' }
-          if(b.type==='text') { const base = (typeof b.style.size==='number'? b.style.size : 20); const s = Math.round(base * (device==='mobile'?1:device==='tablet'?1.32:1.48)); return <div key={bid} style={{fontFamily: theme.bodyFont||theme.font, fontSize: s, fontWeight: b.style.bold?700:400, textAlign:b.style.align}} dangerouslySetInnerHTML={{__html: interpolateTokens(b.content, ctx)}} /> }
-          if(b.type==='button') return <button key={bid} className="btn btn-filled" style={{fontFamily: theme.font, background:buttonBg(theme),alignSelf: b.style.align==='center'?'center':'stretch'}} onClick={goNext} dangerouslySetInnerHTML={{__html: interpolateTokens(b.content, ctx)}} />
-          if(b.type==='image') return <div key={bid} className="img-wrap" style={{borderRadius:12, overflow:'hidden', maxHeight: device==='mobile'?'none':device==='tablet'?'280px':'320px'}}><img src={b.content} alt="" style={{width:'100%',height:'auto',maxHeight: device==='mobile'?'none':device==='tablet'?'280px':'320px', objectFit:'cover'}} /></div>
-          if(b.type==='image') return <div key={bid} className="img-wrap"><img src={b.content} alt="" /></div>
+  const isPreviewSplit = device==='desktop' && page?.desktopLayout?.mode==='split'
+  const previewRatio = page?.desktopLayout?.ratio || '50/50'
+  const previewCols = previewRatio==='60/40' ? '3fr 2fr' : previewRatio==='40/60' ? '2fr 3fr' : previewRatio==='70/30' ? '7fr 3fr' : '1fr 1fr'
+  const renderPreviewBlock = (bid)=>{
+    const b = funnel.blocksById[bid]; if(!b) return null
+    const ctx = { brandName: funnel.settings.brandName, quizName: funnel.name, funnelName: funnel.name, score: collectScoreAndTags(funnel, answers).score, firstName:'there', email:'' }
+    if(b.type==='text') { const base = (typeof b.style.size==='number'? b.style.size : 20); const s = Math.round(base * (device==='mobile'?1:device==='tablet'?1.32:1.48)); return <div key={bid} style={{fontFamily: theme.bodyFont||theme.font, fontSize: s, fontWeight: b.style.bold?700:400, textAlign:b.style.align}} dangerouslySetInnerHTML={{__html: interpolateTokens(b.content, ctx)}} /> }
+    if(b.type==='button') return <button key={bid} className="btn btn-filled" style={{fontFamily: theme.font, background:buttonBg(theme),alignSelf: b.style.align==='center'?'center':'stretch'}} onClick={goNext} dangerouslySetInnerHTML={{__html: interpolateTokens(b.content, ctx)}} />
+    if(b.type==='image') return <div key={bid} className="img-wrap" style={{borderRadius:12, overflow:'hidden', maxHeight: device==='mobile'?'none':device==='tablet'?'280px':'320px'}}><img src={b.content} alt="" style={{width:'100%',height:'auto',maxHeight: device==='mobile'?'none':device==='tablet'?'280px':'320px', objectFit:'cover'}} /></div>
           if(b.type==='quiz') {
             const q = b
             const display = q.optionDisplay||'text'
@@ -312,9 +311,20 @@ function PreviewModal({ onClose }){
             </div>
           }
           return null
-        })}
-        {page?.blocks?.length===0 && <div className="empty">Empty page — add blocks in the builder</div>}
-      </div>
+        }
+        const PreviewContent = (
+          <>
+            <div key={page?.id} className={animClass} style={{display:'flex',flexDirection:'column',gap:10,marginTop:4, ...(animClass ? {animationDuration: `${previewDur}ms`} : {})}}>
+              {isPreviewSplit ? (
+                <div style={{display:'grid', gridTemplateColumns: previewCols, gap:16, alignItems:'start'}}>
+                  <div style={{display:'flex', flexDirection:'column', gap:10}}>{(()=>{ const qi=(page?.blocks||[]).findIndex(id=>{ const b=funnel.blocksById[id]; return b && ['quiz','form','button'].includes(b.type) }); const ids= qi===-1 ? (page?.blocks||[]) : (page?.blocks||[]).slice(0,qi); return ids.map(renderPreviewBlock) })()}</div>
+                  <div style={{display:'flex', flexDirection:'column', gap:10}}>{(()=>{ const qi=(page?.blocks||[]).findIndex(id=>{ const b=funnel.blocksById[id]; return b && ['quiz','form','button'].includes(b.type) }); const ids= qi===-1 ? [] : (page?.blocks||[]).slice(qi); return ids.map(renderPreviewBlock) })()}</div>
+                </div>
+              ) : (
+                (page?.blocks||[]).map(renderPreviewBlock)
+              )}
+              {page?.blocks?.length===0 && <div className="empty">Empty page — add blocks in the builder</div>}
+            </div>
       {(()=>{
         const blocksForNav = (page?.blocks||[]).map(id=> funnel.blocksById[id]).filter(Boolean)
         const quizForNav = blocksForNav.find(b=> b.type==='quiz')
@@ -982,6 +992,30 @@ function LeftRail({ onRequestAdd }){
                       <div className="control-label">Funnel background (entire funnel, behind page)</div>
                       <ColorPicker value={funnel.settings.funnelBackground} onChange={v=>dispatch({type:'UPDATE_FUNNEL_BACKGROUND', background:v})} themeColors={theme.colors} />
                     </div>
+                    {(()=>{
+                      const pg = funnel.pages.find(p=>p.id===selectedPageId)
+                      const lay = pg?.desktopLayout || {mode:'stack', ratio:'50/50'}
+                      return (
+                        <div className="control-row" style={{background:'#fafaf8',border:'1px solid var(--line)',borderRadius:10,padding:10}}>
+                          <div className="control-label">Desktop wide layout (≥1024px) — tablet/mobile stays stacked</div>
+                          <div style={{display:'flex',gap:6}}>
+                            <button className={`chip ${lay.mode==='stack'?'active':''}`} onClick={()=>dispatch({type:'UPDATE_PAGE_LAYOUT', pageId:selectedPageId, layout:{...lay, mode:'stack'}})}>Stack</button>
+                            <button className={`chip ${lay.mode==='split'?'active':''}`} onClick={()=>dispatch({type:'UPDATE_PAGE_LAYOUT', pageId:selectedPageId, layout:{...lay, mode:'split'}})}>Split 2-col</button>
+                          </div>
+                          {lay.mode==='split' && (
+                            <div style={{marginTop:8,display:'flex',flexDirection:'column',gap:6}}>
+                              <div style={{display:'flex',gap:6,alignItems:'center'}}>
+                                <span style={{fontSize:11,color:'var(--muted)'}}>Split</span>
+                                <select className="select" value={lay.ratio} onChange={e=>dispatch({type:'UPDATE_PAGE_LAYOUT', pageId:selectedPageId, layout:{...lay, ratio:e.target.value}})} style={{flex:1}}>
+                                  <option value="50/50">50 / 50</option><option value="60/40">60 / 40 (left wider)</option><option value="40/60">40 / 60 (right wider)</option><option value="70/30">70 / 30</option>
+                                </select>
+                              </div>
+                              <div style={{fontSize:11,color:'var(--faint)',lineHeight:1.4}}>Left: headline + media (text/image/video). Right: quiz/form. Desktop only — preview in Browser mode.</div>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })()}
                     <div style={{height:1,background:'var(--line)',margin:'4px 0'}}/>
                   </>
                 )}
@@ -2180,23 +2214,61 @@ function Canvas({ previewBlock, setPreviewBlock, previewBlocks, setPreviewBlocks
             )}
             <div className="canvas-inner" onDragOver={e=>e.preventDefault()} style={{flex:1, overflowY:'auto', padding: device==='mobile' ? '12px 16px 18px' : device==='tablet' ? '28px 32px 32px' : '32px 40px 40px', display:'flex', flexDirection:'column', gap:0, justifyContent: device==='mobile' ? 'flex-start' : 'safe center', alignItems:'center'}}>
               {device==='mobile' && <div style={{width:36,height:4,background:'#e8e6e1',borderRadius:99,margin:'0 auto 10px', flexShrink:0, alignSelf:'stretch'}}/>}
-              <div style={{width:'100%', maxWidth: contentMaxW, display:'flex', flexDirection:'column', gap:0, flexShrink:0}}>
-          {(page?.blocks||[]).map((bid, idx)=>(
-            <div key={bid} data-block-id={bid}
-              onDragOver={e=>{ e.preventDefault(); setDragOverIdx(idx)}}
-              onDrop={e=>{
-                const fromId = e.dataTransfer.getData('text/plain')
-                const fromIdx = page.blocks.indexOf(fromId)
-                if(fromIdx>=0 && fromIdx!==idx){
-                  dispatch({type:'MOVE_BLOCK', pageId: page.id, from: fromIdx, to: idx})
+              {(()=>{
+                const isSplit = device==='desktop' && page?.desktopLayout?.mode==='split'
+                if(!isSplit){
+                  return (
+                    <div style={{width:'100%', maxWidth: contentMaxW, display:'flex', flexDirection:'column', gap:0, flexShrink:0}}>
+                      {(page?.blocks||[]).map((bid, idx)=>(
+                        <div key={bid} data-block-id={bid}
+                          onDragOver={e=>{ e.preventDefault(); setDragOverIdx(idx)}}
+                          onDrop={e=>{
+                            const fromId = e.dataTransfer.getData('text/plain')
+                            const fromIdx = page.blocks.indexOf(fromId)
+                            if(fromIdx>=0 && fromIdx!==idx){
+                              dispatch({type:'MOVE_BLOCK', pageId: page.id, from: fromIdx, to: idx})
+                            }
+                            setDragOverIdx(null)
+                          }}
+                          style={{ borderTop: dragOverIdx===idx?'2px solid var(--blue)':'2px solid transparent'}}
+                        >
+                          <BlockRenderer blockId={bid} />
+                        </div>
+                      ))}
+                    </div>
+                  )
                 }
-                setDragOverIdx(null)
-              }}
-              style={{ borderTop: dragOverIdx===idx?'2px solid var(--blue)':'2px solid transparent'}}
-            >
-              <BlockRenderer blockId={bid} />
-            </div>
-          ))}
+                const ratio = page?.desktopLayout?.ratio || '50/50'
+                const cols = ratio==='60/40' ? '3fr 2fr' : ratio==='40/60' ? '2fr 3fr' : ratio==='70/30' ? '7fr 3fr' : '1fr 1fr'
+                const quizIdx = (page?.blocks||[]).findIndex(id=>{ const b=funnel.blocksById[id]; return b && ['quiz','form','button'].includes(b.type) })
+                const leftIds = quizIdx===-1 ? (page?.blocks||[]) : (page?.blocks||[]).slice(0, quizIdx)
+                const rightIds = quizIdx===-1 ? [] : (page?.blocks||[]).slice(quizIdx)
+                const renderIds = (ids)=> ids.map(bid=>{
+                  const idx = page.blocks.indexOf(bid)
+                  return (
+                    <div key={bid} data-block-id={bid}
+                      onDragOver={e=>{ e.preventDefault(); setDragOverIdx(idx)}}
+                      onDrop={e=>{
+                        const fromId = e.dataTransfer.getData('text/plain')
+                        const fromIdx = page.blocks.indexOf(fromId)
+                        if(fromIdx>=0 && fromIdx!==idx){
+                          dispatch({type:'MOVE_BLOCK', pageId: page.id, from: fromIdx, to: idx})
+                        }
+                        setDragOverIdx(null)
+                      }}
+                      style={{ borderTop: dragOverIdx===idx?'2px solid var(--blue)':'2px solid transparent'}}
+                    >
+                      <BlockRenderer blockId={bid} />
+                    </div>
+                  )
+                })
+                return (
+                  <div style={{width:'100%', maxWidth:'100%', display:'grid', gridTemplateColumns: cols, gap:24, alignItems:'start'}}>
+                    <div style={{display:'flex', flexDirection:'column', gap:14}}>{renderIds(leftIds)}</div>
+                    <div style={{display:'flex', flexDirection:'column', gap:14}}>{renderIds(rightIds)}</div>
+                  </div>
+                )
+              })()}
           {previewBlock && (
             <div className="block preview" style={{position:'relative', marginBottom:24}}>
               <span className="badge" style={{opacity:1}}>Preview</span>
@@ -2315,7 +2387,6 @@ function Canvas({ previewBlock, setPreviewBlock, previewBlocks, setPreviewBlocks
               </div>
             </div>
           )}
-              </div>
           <button className="add-block-btn" title="New Block" onClick={()=>{
             if(previewBlock || previewBlocks){
               const bar = document.querySelector('.confirm-bar')

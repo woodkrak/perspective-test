@@ -260,9 +260,16 @@ export function createRobustDemoFunnel(){
   q7.q.style.size = 24
   q7.q.style.bold = true
   ;[q7.q, ...q7.answers].forEach(b=> map[b.id]=b)
-  const q7Note = makeBlock('text', { content:'<span style="background:#fff1f2;border:1px solid #fecaca;color:#831843;border-radius:99px;padding:6px 12px;font-size:12px;font-weight:600">Your answer here weights the result most</span>', style:{ size:'M', align:'center' } })
-  map[q7Note.id]=q7Note
-  addPage('Q7 — Commitment','q7',[q7.q, q7Note])
+  const q7Head = makeBlock('text', { content:'<strong style="font-size:1.1em">How committed are you?</strong><br><span style="color:#6b6b6b;font-weight:400">Your answer here weights the result most — choose honestly for {{brandName}}.</span>', style:{ size:'L', align:'left', bold:false } })
+  const q7Video = makeBlock('video', { content:'https://www.youtube.com/watch?v=dQw4w9WgXcQ' })
+  const q7Note = makeBlock('text', { content:'<span style="background:#fff1f2;border:1px solid #fecaca;color:#831843;border-radius:99px;padding:6px 12px;font-size:12px;font-weight:600">Your answer weights the result most</span>', style:{ size:'M', align:'center' } })
+  map[q7Head.id]=q7Head; map[q7Video.id]=q7Video; map[q7Note.id]=q7Note
+  addPage('Q7 — Commitment','q7',[q7Head, q7Video, q7.q, q7Note])
+  // set split layout for Q7 desktop (60/40)
+  {
+    const p = pages[pages.length-1]
+    if(p) p.desktopLayout = {mode:'split', ratio:'60/40'}
+  }
   // Lead capture — multi-field demo
   const capHead = makeBlock('text', { content:'Get your personalized plan — {{brandName}}', style:{ size:'L', align:'center', bold:true } })
   const capSub = makeBlock('text', { content:'Your score {{score}} and tags determine the result. Leave your details — we’ll send the detailed report (with {{firstName}} merge).', style:{ size:'M', align:'center' } })
@@ -409,6 +416,9 @@ function migratePersisted(saved){
     }
     saved.pages?.forEach(p=>{
       if(!p.background) p.background={kind:'token', slot:1}
+      if(!p.desktopLayout) p.desktopLayout={mode:'stack', ratio:'50/50'}
+      if(p.desktopLayout.mode===undefined) p.desktopLayout.mode='stack'
+      if(!p.desktopLayout.ratio) p.desktopLayout.ratio='50/50'
     })
     // trim phantom pages 4-6 (keep only first 3 unless user explicitly added)
     if(saved.pages && saved.pages.length>3){
@@ -535,13 +545,16 @@ function funnelReducer(state, action){
       const remaining = state.themes.filter(t=>t.id!==action.id)
       return { ...state, themes: remaining, themeId: remaining[0]?.id ?? state.themeId }
     }
+    case 'UPDATE_PAGE_LAYOUT': {
+      return { ...state, pages: state.pages.map(p=> p.id===action.pageId ? { ...p, desktopLayout: action.layout } : p) }
+    }
     case 'ADD_PAGE': {
-      const np = { id:uid(), index: state.pages.length+1, name:`Page ${state.pages.length+1}`, slug:`page-${state.pages.length+1}`, confetti:false, blocks:[], background:{kind:'token', slot:1} }
+      const np = { id:uid(), index: state.pages.length+1, name:`Page ${state.pages.length+1}`, slug:`page-${state.pages.length+1}`, confetti:false, blocks:[], background:{kind:'token', slot:1}, desktopLayout:{mode:'stack', ratio:'50/50'} }
       return { ...state, pages:[...state.pages, np] }
     }
     case 'DUPLICATE_PAGE': {
       const src = state.pages.find(p=>p.id===action.id); if(!src) return state
-      const copy = { ...src, id:uid(), name: `${src.name} copy`, index: state.pages.length+1, blocks: [] }
+      const copy = { ...src, id:uid(), name: `${src.name} copy`, index: state.pages.length+1, blocks: [], desktopLayout: src.desktopLayout ? {...src.desktopLayout} : {mode:'stack', ratio:'50/50'} }
       const newBlocks = {}
       src.blocks.forEach(bid=>{
         const b = state.blocksById[bid]
@@ -751,7 +764,7 @@ export function FunnelProvider({ children }){
   },[selectedPageId, selectedBlockId])
 
   const dispatchWithHistory = useCallback((action)=>{
-    const historyActions = new Set(['UPDATE_BLOCK','UPDATE_BLOCK_CONTENT','UPDATE_BLOCK_STYLE','ADD_BLOCK','DELETE_BLOCK','DUPLICATE_BLOCK','MOVE_BLOCK','ADD_PAGE','DELETE_PAGE','RENAME_PAGE','ADD_RESULT','DELETE_RESULT','UPDATE_RESULT','UPDATE_THEME','CREATE_THEME','FORK_THEME','DELETE_THEME','SET_FUNNEL_NAME','SET_THEME','UPSERT_BLOCKS','UPDATE_PAGE_BACKGROUND','UPDATE_FUNNEL_BACKGROUND','UPDATE_SETTINGS','UPDATE_LEGAL','UPDATE_MESSAGE_SEQUENCE'])
+    const historyActions = new Set(['UPDATE_BLOCK','UPDATE_BLOCK_CONTENT','UPDATE_BLOCK_STYLE','ADD_BLOCK','DELETE_BLOCK','DUPLICATE_BLOCK','MOVE_BLOCK','ADD_PAGE','DELETE_PAGE','RENAME_PAGE','UPDATE_PAGE_LAYOUT','ADD_RESULT','DELETE_RESULT','UPDATE_RESULT','UPDATE_THEME','CREATE_THEME','FORK_THEME','DELETE_THEME','SET_FUNNEL_NAME','SET_THEME','UPSERT_BLOCKS','UPDATE_PAGE_BACKGROUND','UPDATE_FUNNEL_BACKGROUND','UPDATE_SETTINGS','UPDATE_LEGAL','UPDATE_MESSAGE_SEQUENCE'])
     if(historyActions.has(action.type) && !skipHistoryRef.current){
       setPast({ type:'PUSH', snapshot: deepClone(funnel) })
       setFuture({ type:'CLEAR' })
