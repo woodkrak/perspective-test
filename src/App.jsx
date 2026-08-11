@@ -352,7 +352,7 @@ function PreviewModal({ onClose }){
             return (
               <div key={bid} className="quiz-wrap">
                 <div style={{fontFamily: theme.font, fontWeight:700,marginBottom:10, fontSize: Math.round(((typeof q.style?.size==='number'?q.style.size:22))* (device==='mobile'?1:device==='tablet'?1.32:1.48))}} dangerouslySetInnerHTML={{__html: interpolateTokens(q.content?.question||'', ctx)}} />
-                <div className={`quiz-grid ${isCard ? 'cards' : ''}`} style={!isCard ? {gridTemplateColumns: device==='mobile'?'1fr':'1fr 1fr'} : undefined}>
+                <div className={`quiz-grid ${isCard ? `cards ${b.cardLayout==='stack' ? 'stack' : b.cardLayout==='2col' ? 'cols2' : ''}` : ''}`} style={!isCard ? {gridTemplateColumns: device==='mobile'?'1fr':'1fr 1fr'} : undefined}>
                   {(q.children||[]).map(cid=>{
                     const ans = funnel.blocksById[cid]
                     const icon = ans?.icon
@@ -1406,7 +1406,15 @@ function PropertyPanel({ block, theme, funnel }){
                     <option value="">Theme default</option><option>Fraunces</option><option>Inter</option><option>JetBrains Mono</option>
                   </select>
                 </div>
-                <div style={{fontSize:11,color:'var(--faint)',marginTop:4}}>Bottom ~28% of card is solid; top is photo or centered icon. Hover zooms card slightly.</div>
+                <div style={{display:'flex',gap:8,alignItems:'center',marginTop:6}}>
+                  <span style={{fontSize:11,color:'var(--muted)'}}>Layout</span>
+                  <select className="select" value={block.cardLayout || 'grid'} onChange={e=>dispatch({type:'UPDATE_BLOCK', id:block.id, patch:{cardLayout: e.target.value}})} style={{flex:1}}>
+                    <option value="grid">Side-by-side (auto, 2-3 cols)</option>
+                    <option value="stack">Stacked (single column)</option>
+                    <option value="2col">2 columns (2×2 for 4)</option>
+                  </select>
+                </div>
+                <div style={{fontSize:11,color:'var(--faint)',marginTop:4}}>Stack = one per row. Grid = auto side-by-side, odd centered. Hover zooms card slightly.</div>
               </div>
               <div className="control-row">
                 <div className="control-label">Selection</div>
@@ -2092,7 +2100,7 @@ function BlockRenderer({ blockId, depth=0, onSelect }){
           />
           {editing && <InlineToolbar targetRef={ref} />}
         </div>
-        <div className={`quiz-grid ${block.optionDisplay==='card-photo' || block.optionDisplay==='card-icon' ? 'cards' : ''}`}>
+        <div className={`quiz-grid ${block.optionDisplay==='card-photo' || block.optionDisplay==='card-icon' ? `cards ${block.cardLayout==='stack' ? 'stack' : block.cardLayout==='2col' ? 'cols2' : ''}` : ''}`}>
           {(block.children||[]).map(cid=>{
             const ans = funnel.blocksById[cid]
             if(!ans) return null

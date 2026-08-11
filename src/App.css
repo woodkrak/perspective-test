@@ -120,6 +120,8 @@
 .quiz-title[contenteditable="true"]{cursor:text}
 .quiz-grid{display:grid;grid-template-columns:1fr;gap:12px}
 .quiz-grid.cards{grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:16px; justify-items:stretch}
+.quiz-grid.cards.stack{grid-template-columns:1fr}
+.quiz-grid.cards.cols2{grid-template-columns:repeat(2, 1fr)}
 .quiz-grid.cards .answer-card{flex-direction:column; padding:0; overflow:hidden; box-shadow:0 2px 10px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06); border:none}
 .quiz-grid.cards .answer-card:hover{transform:scale(1.02); box-shadow:0 8px 20px rgba(0,0,0,.12)}
 .quiz-grid.cards .answer-card.selected{outline:2px solid var(--accent, #111); outline-offset:0}

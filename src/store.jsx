@@ -49,6 +49,7 @@ const makeBlock = (type, extra={}) => {
     base.cardTextColor = extra.cardTextColor ?? {kind:'solid', hex:'#ffffff'}
     base.cardTextSize = extra.cardTextSize ?? 14
     base.cardTextFont = extra.cardTextFont ?? ''
+    base.cardLayout = extra.cardLayout ?? 'grid'
   }
   if(type==='image'){
     base.dropShadow = extra.dropShadow ?? true
@@ -167,6 +168,7 @@ export function createRobustDemoFunnel(){
       cardColor: cfg.cardColor ?? {kind:'token', slot:3},
       cardTextColor: cfg.cardTextColor ?? {kind:'solid', hex:'#ffffff'},
       cardTextSize: cfg.cardTextSize ?? 14,
+      cardLayout: cfg.cardLayout ?? 'grid',
       children: answers.map(a=>a.id)
     })
     answers.forEach(a=> a.parentId = q.id)
@@ -474,6 +476,7 @@ function migratePersisted(saved){
         if(!b.cardTextColor) b.cardTextColor={kind:'solid', hex:'#ffffff'}
         if(b.cardTextSize===undefined) b.cardTextSize=14
         if(b.cardTextFont===undefined) b.cardTextFont=''
+        if(!b.cardLayout) b.cardLayout='grid'
       }
       if(b.type==='image'){
         if(b.dropShadow===undefined) b.dropShadow = true
