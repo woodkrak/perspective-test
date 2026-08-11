@@ -1,6 +1,16 @@
 import { useState, useEffect, useRef } from 'react'
 import { FunnelProvider, useFunnel, interpolateTokens, collectScoreAndTags, resolveResultId, createRobustDemoFunnel } from './store.jsx'
+import { TrendingUp, Target, Heart, Users } from 'lucide-react'
 import './App.css'
+
+const LUCIDE_MAP = { 'trending-up': TrendingUp, 'target': Target, 'heart': Heart, 'users': Users }
+function LucideIcon({ name, size=20 }){
+  if(!name) return null
+  const key = name.replace(/^lucide:/,'').toLowerCase()
+  const Icon = LUCIDE_MAP[key]
+  if(!Icon) return <span style={{fontSize:size,lineHeight:1}}>{name.replace(/^lucide:/,'')}</span>
+  return <Icon size={size} strokeWidth={2} />
+}
 
 function SettingsModal({ onClose }){
   const { funnel, dispatch } = useFunnel()
@@ -268,7 +278,7 @@ function PreviewModal({ onClose }){
                     const showIcon = display==='icon' && icon
                     const showImg = display==='image'
                     return <button key={cid} className={`answer-card ${answers[q.trackingId]===cid?'selected':''}`} onClick={()=> handlePick(cid)} style={{textAlign:'left', display:'flex',gap:8,alignItems:'center'}}>
-                      {showIcon ? <span style={{width:36,height:36,borderRadius:8,background:'#f2f0ed',flexShrink:0,display:'grid',placeItems:'center',fontSize:18}}>{icon.startsWith('lucide:')? icon.slice(7): icon}</span>
+                      {showIcon ? <span style={{width:36,height:36,borderRadius:8,background:'#f2f0ed',flexShrink:0,display:'grid',placeItems:'center'}}>{icon.startsWith('lucide:') ? <LucideIcon name={icon} size={18}/> : <span style={{fontSize:18}}>{icon}</span>}</span>
                        : showImg ? <span style={{width:36,height:36,borderRadius:8,background:'#f2f0ed',overflow:'hidden',flexShrink:0,display:'grid',placeItems:'center'}}><img src={`https://picsum.photos/seed/${cid}/80/80`} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/></span>
                        : <span style={{width:36,height:36,borderRadius:8,background:'#f2f0ed',overflow:'hidden',flexShrink:0,display:'grid',placeItems:'center'}}><img src={`https://picsum.photos/seed/${cid}/80/80`} alt="" style={{width:'100%',height:'100%',objectFit:'cover',opacity: showIcon||showImg?1:0.3}}/></span>}
                       <span style={{flex:1,fontFamily: theme.bodyFont||theme.font}}>{interpolateTokens(ans?.content||'', ctx)}</span>
@@ -1920,7 +1930,7 @@ function BlockRenderer({ blockId, depth=0, onSelect }){
                 style={{borderRadius: radius-4, position:'relative', cursor:'pointer', userSelect: isEditingAns?'text':'none'}}
               >
                 {showIcon ? (
-                  <span style={{width:36,height:36,borderRadius:8,background:'#f2f0ed',flexShrink:0,display:'grid',placeItems:'center',fontSize:18,pointerEvents:'none'}}>{icon.startsWith('lucide:')? icon.slice(7): icon}</span>
+                  <span style={{width:36,height:36,borderRadius:8,background:'#f2f0ed',flexShrink:0,display:'grid',placeItems:'center',pointerEvents:'none'}}>{icon.startsWith('lucide:') ? <LucideIcon name={icon} size={18}/> : <span style={{fontSize:18}}>{icon}</span>}</span>
                 ) : showImg ? (
                   <div className="answer-thumb" style={{pointerEvents:'none'}}><img src={`https://picsum.photos/seed/${cid}/80/80`} alt="" style={{pointerEvents:'none'}}/></div>
                 ) : (

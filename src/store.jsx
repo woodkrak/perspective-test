@@ -221,7 +221,7 @@ export function createRobustDemoFunnel(){
   map[q3Img.id]=q3Img
   addPage('Q3 — Revenue','q3',[q3.q, q3Img])
   pages[pages.length-1].background = {kind:'gradient', from:'#fff1f2', to:'#ffffff', angle:180}
-  // Q4 — challenge — icon
+  // Q4 — challenge — icon (lucide — now properly rendered)
   const q4 = mkQuiz('What’s your biggest challenge right now?', [
     {label:'Getting more traffic', score:2, tags:['traffic'], icon:'lucide:trending-up', reportBody:'Traffic is the top constraint — fix acquisition first.'},
     {label:'Converting visitors', score:4, tags:['conversion','qualified'], icon:'lucide:target', reportHeadline:'Conversion — the lever', reportBody:'Conversion at {{score}} pts — your landing copy needs testing.'},
