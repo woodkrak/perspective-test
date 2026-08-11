@@ -258,7 +258,8 @@ function PreviewModal({ onClose }){
             const handlePick = (cid)=>{
               let nextAnswers
               setAnswers(a=>{ nextAnswers = {...a,[q.trackingId]:cid}; return nextAnswers })
-              const auto = q.autoAdvance ?? funnel.settings.autoAdvance
+              const isSingle = (q.children||[]).length===1
+              const auto = isSingle ? true : (q.autoAdvance ?? funnel.settings.autoAdvance)
               const delay = q.autoAdvanceDelayMs ?? funnel.settings.autoAdvanceDelayMs ?? 600
               if(auto){
                 setTimeout(()=> {
