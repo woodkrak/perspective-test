@@ -81,13 +81,13 @@ function defaultContent(type){
 }
 
 const THEMES = [
-  { id:'t1', name:'Editorial', font:'Fraunces', bodyFont:'Inter', colors:['#ffffff','#0f0f0f','#2563eb','#f59e0b'], radius:2, transition:'fade', disableAnimation:false, isSystem:false },
-  { id:'t2', name:'Minimal', font:'Inter', bodyFont:'Inter', colors:['#fafaf8','#111111','#111111','#e8e6e1'], radius:1, transition:'slide', disableAnimation:false, isSystem:true },
-  { id:'t3', name:'Sunset', font:'Fraunces', bodyFont:'Inter', colors:['#fff7ed','#7c2d12','#ea580c','#facc15'], radius:3, transition:'scale', disableAnimation:false, isSystem:true },
-  { id:'t4', name:'Ocean', font:'Inter', bodyFont:'Inter', colors:['#f0f9ff','#0c4a6e','#0284c7','#06b6d4'], radius:2, transition:'fade', disableAnimation:false, isSystem:true },
-  { id:'t5', name:'Party', font:'Fraunces', bodyFont:'Inter', colors:['#fff1f2','#831843','#ec4899','#8b5cf6'], radius:3, transition:'scale', disableAnimation:false, isSystem:true },
-  { id:'t6', name:'AI — Nebula', font:'JetBrains Mono', bodyFont:'JetBrains Mono', colors:['#faf5ff','#2e1065','#7c3aed','#a78bfa'], radius:3, transition:'fade', disableAnimation:false, isSystem:true },
-  { id:'t7', name:'AI — Vector', font:'JetBrains Mono', bodyFont:'JetBrains Mono', colors:['#010d03','#00ff41','#22c55e','#86efac'], radius:1, transition:'none', disableAnimation:false, isSystem:true },
+  { id:'t1', name:'Editorial', font:'Fraunces', bodyFont:'Inter', colors:['#ffffff','#0f0f0f','#2563eb','#f59e0b'], radius:2, transition:'fade', transitionDuration:380, disableAnimation:false, isSystem:false },
+  { id:'t2', name:'Minimal', font:'Inter', bodyFont:'Inter', colors:['#fafaf8','#111111','#111111','#e8e6e1'], radius:1, transition:'slide', transitionDuration:380, disableAnimation:false, isSystem:true },
+  { id:'t3', name:'Sunset', font:'Fraunces', bodyFont:'Inter', colors:['#fff7ed','#7c2d12','#ea580c','#facc15'], radius:3, transition:'scale', transitionDuration:380, disableAnimation:false, isSystem:true },
+  { id:'t4', name:'Ocean', font:'Inter', bodyFont:'Inter', colors:['#f0f9ff','#0c4a6e','#0284c7','#06b6d4'], radius:2, transition:'fade', transitionDuration:380, disableAnimation:false, isSystem:true },
+  { id:'t5', name:'Party', font:'Fraunces', bodyFont:'Inter', colors:['#fff1f2','#831843','#ec4899','#8b5cf6'], radius:3, transition:'scale', transitionDuration:380, disableAnimation:false, isSystem:true },
+  { id:'t6', name:'AI — Nebula', font:'JetBrains Mono', bodyFont:'JetBrains Mono', colors:['#faf5ff','#2e1065','#7c3aed','#a78bfa'], radius:3, transition:'fade', transitionDuration:380, disableAnimation:false, isSystem:true },
+  { id:'t7', name:'AI — Vector', font:'JetBrains Mono', bodyFont:'JetBrains Mono', colors:['#010d03','#00ff41','#22c55e','#86efac'], radius:1, transition:'none', transitionDuration:380, disableAnimation:false, isSystem:true },
 ]
 
 function initialFunnel(){
@@ -387,6 +387,7 @@ function migratePersisted(saved){
       THEMES.forEach(t=>{ if(!have.has(t.id)) saved.themes.push(t) })
       // P8: backfill bodyFont
       saved.themes.forEach(t=>{ if(!t.bodyFont) t.bodyFont = t.font })
+      saved.themes.forEach(t=>{ if(t.transitionDuration===undefined) t.transitionDuration = 380 })
     }
     // ensure funnelBackground and page backgrounds exist
     if(!saved.settings) saved.settings={}
@@ -520,7 +521,7 @@ function funnelReducer(state, action){
       return { ...state, themes: state.themes.map(t=> t.id===action.id ? { ...t, ...action.patch } : t) }
     }
     case 'CREATE_THEME': {
-      const nt = { id:uid(), name:'New theme', font:'Inter', bodyFont:'Inter', colors:['#ffffff','#111111','#2563eb','#f59e0b'], radius:2, transition:'fade', disableAnimation:false, isSystem:false }
+      const nt = { id:uid(), name:'New theme', font:'Inter', bodyFont:'Inter', colors:['#ffffff','#111111','#2563eb','#f59e0b'], radius:2, transition:'fade', transitionDuration:380, disableAnimation:false, isSystem:false }
       return { ...state, themes:[nt, ...state.themes], themeId: nt.id }
     }
     case 'FORK_THEME': {

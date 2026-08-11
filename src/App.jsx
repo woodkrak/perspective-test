@@ -244,9 +244,10 @@ function PreviewModal({ onClose }){
     )
   }
   const animClass = (!theme.disableAnimation && theme.transition && theme.transition!=='none') ? `page-anim pt-${theme.transition}` : ''
+  const previewDur = theme.transitionDuration ?? 380
   const PreviewContent = (
     <>
-      <div key={page?.id} className={animClass} style={{display:'flex',flexDirection:'column',gap:10,marginTop:4}}>
+      <div key={page?.id} className={animClass} style={{display:'flex',flexDirection:'column',gap:10,marginTop:4, ...(animClass ? {animationDuration: `${previewDur}ms`} : {})}}>
         {(page?.blocks||[]).map(bid=>{
           const b = funnel.blocksById[bid]; if(!b) return null
           const ctx = { brandName: funnel.settings.brandName, quizName: funnel.name, funnelName: funnel.name, score: collectScoreAndTags(funnel, answers).score, firstName:'there', email:'' }
@@ -861,6 +862,13 @@ function LeftRail({ onRequestAdd }){
                 <option value="none">None</option><option value="fade">Fade</option><option value="slide">Slide</option><option value="slide-up">Slide Up</option><option value="scale">Scale</option><option value="flip">Flip</option>
               </select>
               <div style={{fontSize:11,color:'var(--muted)'}}>Animates how pages arrive/leave in builder + Preview</div>
+              {t.transition!=='none' && !t.disableAnimation && (
+                <div style={{display:'flex',gap:8,alignItems:'center',marginTop:8}}>
+                  <span style={{fontSize:11,color:'var(--muted)',whiteSpace:'nowrap'}}>Speed</span>
+                  <input className="slider" type="range" min={120} max={900} step={20} value={t.transitionDuration ?? 380} onChange={e=>dispatch({type:'UPDATE_THEME', id:t.id, patch:{transitionDuration: Number(e.target.value)}})} style={{flex:1}} />
+                  <span style={{fontSize:12,fontWeight:600,minWidth:48,textAlign:'right'}}>{t.transitionDuration ?? 380}ms</span>
+                </div>
+              )}
             </div>
             <label className="row" style={{gap:10, fontSize:13, fontWeight:500}}>
               <span className={`toggle ${t.disableAnimation?'on':''}`} onClick={()=>dispatch({type:'UPDATE_THEME', id:t.id, patch:{disableAnimation:!t.disableAnimation}})}><i/></span>
@@ -2154,7 +2162,7 @@ function Canvas({ previewBlock, setPreviewBlock, previewBlocks, setPreviewBlocks
             {funnel.settings.legal?.bannerText && (
               <div style={{background: theme.colors[2], color:'#fff', textAlign:'center', padding:'6px 10px', fontSize:11, fontWeight:600, flexShrink:0}}>{funnel.settings.legal.bannerText}</div>
             )}
-            <div key={page?.id} className={`canvas-inner ${(!theme.disableAnimation && theme.transition && theme.transition!=='none') ? `page-anim pt-${theme.transition}` : ''}`} onDragOver={e=>e.preventDefault()} style={{flex:1, overflowY:'auto', padding: device==='mobile' ? '12px 16px 18px' : device==='tablet' ? '18px' : '20px', display:'flex', flexDirection:'column', gap:0}}>
+            <div key={page?.id} className={`canvas-inner ${(!theme.disableAnimation && theme.transition && theme.transition!=='none') ? `page-anim pt-${theme.transition}` : ''}`} onDragOver={e=>e.preventDefault()} style={{flex:1, overflowY:'auto', padding: device==='mobile' ? '12px 16px 18px' : device==='tablet' ? '18px' : '20px', display:'flex', flexDirection:'column', gap:0, ...((!theme.disableAnimation && theme.transition && theme.transition!=='none') ? {animationDuration: `${theme.transitionDuration ?? 380}ms`} : {})}}>
               {device==='mobile' && <div style={{width:36,height:4,background:'#e8e6e1',borderRadius:99,margin:'0 auto 10px', flexShrink:0}}/>}
           {(page?.blocks||[]).map((bid, idx)=>(
             <div key={bid} data-block-id={bid}
