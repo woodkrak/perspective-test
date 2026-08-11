@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { FunnelProvider, useFunnel } from './store.jsx'
+import { FunnelProvider, useFunnel, interpolateTokens, collectScoreAndTags, resolveResultId } from './store.jsx'
 import './App.css'
 
 function SettingsModal({ onClose }){
@@ -33,11 +33,34 @@ function SettingsModal({ onClose }){
           </div>
           {tab==='general' && (
             <div style={{display:'flex',flexDirection:'column',gap:12}}>
+              <label style={{fontSize:12,fontWeight:600,color:'var(--muted)'}}>Funnel name / Quiz name</label>
+              <input className="input" value={funnel.name} onChange={e=> dispatch({type:'SET_FUNNEL_NAME', name:e.target.value})} />
+              <label style={{fontSize:12,fontWeight:600,color:'var(--muted)'}}>Brand name</label>
+              <input className="input" value={s.brandName||''} onChange={e=> dispatch({type:'UPDATE_SETTINGS', patch:{brandName:e.target.value}})} placeholder="Acme" />
+              <label style={{fontSize:12,fontWeight:600,color:'var(--muted)'}}>Category</label>
+              <input className="input" value={s.category||''} onChange={e=> dispatch({type:'UPDATE_SETTINGS', patch:{category:e.target.value}})} placeholder="Growth" />
+              <label style={{fontSize:12,fontWeight:600,color:'var(--muted)'}}>Subtitle</label>
+              <input className="input" value={s.subtitle||''} onChange={e=> dispatch({type:'UPDATE_SETTINGS', patch:{subtitle:e.target.value}})} placeholder="Answer 4 quick questions…" />
+              <label style={{fontSize:12,fontWeight:600,color:'var(--muted)'}}>Start CTA label</label>
+              <input className="input" value={s.startCta||''} onChange={e=> dispatch({type:'UPDATE_SETTINGS', patch:{startCta:e.target.value}})} placeholder="Get my free audit" />
               <label style={{fontSize:12,fontWeight:600,color:'var(--muted)'}}>Favicon URL</label>
               <input className="input" value={s.favicon} onChange={e=> patch({favicon:e.target.value})} placeholder="https://..." />
               <label style={{fontSize:12,fontWeight:600,color:'var(--muted)'}}>Language</label>
               <select className="select" value={s.language} onChange={e=> patch({language:e.target.value})}><option value="en">English</option><option value="de">Deutsch</option><option value="fr">Français</option></select>
               <div style={{fontSize:12,color:'var(--muted)'}}>Funnel URL: <code>/{funnel.pages[0]?.slug || 'welcome'}</code></div>
+              <div style={{height:1,background:'var(--line)',margin:'4px 0'}}/>
+              <div style={{fontSize:11,letterSpacing:'.06em',textTransform:'uppercase',color:'var(--faint)',fontWeight:700}}>Behavior</div>
+              <label style={{display:'flex',gap:10,alignItems:'center',fontSize:13,fontWeight:500}}>
+                <span className={`toggle ${s.autoAdvance?'on':''}`} onClick={()=> dispatch({type:'UPDATE_SETTINGS', patch:{autoAdvance: !s.autoAdvance}})}><i/></span>
+                Auto-advance on choice (global)
+              </label>
+              {s.autoAdvance && (
+                <div style={{display:'flex',gap:8,alignItems:'center'}}>
+                  <span style={{fontSize:11,color:'var(--muted)'}}>Delay</span>
+                  <input className="slider" type="range" min={0} max={2000} step={100} value={s.autoAdvanceDelayMs||600} onChange={e=> dispatch({type:'UPDATE_SETTINGS', patch:{autoAdvanceDelayMs: Number(e.target.value)}})} style={{flex:1}} />
+                  <span style={{fontSize:12,fontWeight:600,minWidth:48,textAlign:'right'}}>{s.autoAdvanceDelayMs||600}ms</span>
+                </div>
+              )}
             </div>
           )}
           {tab==='social' && (
@@ -53,23 +76,42 @@ function SettingsModal({ onClose }){
             </div>
           )}
           {tab==='progress' && (
-            <div style={{display:'flex',gap:12}}>
-              {[
-                {id:true,label:'Show',desc:'Thin bar at top of each page'},
-                {id:false,label:'None',desc:'No progress indicator'},
-              ].map(opt=>(
-                <button key={String(opt.id)} onClick={()=> patch({progressBar: opt.id})} style={{flex:1,padding:14,borderRadius:12,border: s.progressBar===opt.id?'2px solid #111':'1px solid var(--line)',background: s.progressBar===opt.id?'#f5f4f1':'#fff',textAlign:'left',cursor:'pointer'}}>
-                  <div style={{fontWeight:700,fontSize:13}}>{opt.label}</div><div style={{fontSize:12,color:'var(--muted)'}}>{opt.desc}</div>
-                  {opt.id && <div style={{height:4,background:'#efede9',borderRadius:99,marginTop:10,overflow:'hidden'}}><div style={{width:'66%',height:'100%',background:'#111'}}/></div>}
-                </button>
-              ))}
+            <div style={{display:'flex',flexDirection:'column',gap:12}}>
+              <div style={{display:'flex',gap:12}}>
+                {[
+                  {id:'bar',label:'Bar',desc:'Thick bar at top'},
+                  {id:'thin',label:'Thin',desc:'Hairline indicator'},
+                  {id:'hidden',label:'Hidden',desc:'No progress indicator'},
+                ].map(opt=>(
+                  <button key={opt.id} onClick={()=> {
+                    const isHidden = opt.id==='hidden'
+                    dispatch({type:'UPDATE_SETTINGS', patch:{progressStyle: opt.id, progressBar: !isHidden}})
+                  }} style={{flex:1,padding:14,borderRadius:12,border: (s.progressStyle|| (s.progressBar?'bar':'hidden'))===opt.id?'2px solid #111':'1px solid var(--line)',background: (s.progressStyle|| (s.progressBar?'bar':'hidden'))===opt.id?'#f5f4f1':'#fff',textAlign:'left',cursor:'pointer'}}>
+                    <div style={{fontWeight:700,fontSize:13}}>{opt.label}</div><div style={{fontSize:12,color:'var(--muted)'}}>{opt.desc}</div>
+                    {opt.id!=='hidden' && <div style={{height: opt.id==='thin'?2:4,background:'#efede9',borderRadius:99,marginTop:10,overflow:'hidden'}}><div style={{width:'66%',height:'100%',background:'#111'}}/></div>}
+                  </button>
+                ))}
+              </div>
+              <div style={{fontSize:11,color:'var(--faint)'}}>Legacy progressBar boolean maps to Bar/Hidden; new progressStyle adds Thin.</div>
             </div>
           )}
           {tab==='privacy' && (
-            <label style={{display:'flex',gap:10,alignItems:'center',fontSize:13,fontWeight:500}}>
-              <span className={`toggle ${s.cookieBanner?'on':''}`} onClick={()=> patch({cookieBanner: !s.cookieBanner})}><i/></span>
-              Show cookie banner
-            </label>
+            <div style={{display:'flex',flexDirection:'column',gap:12}}>
+              <label style={{display:'flex',gap:10,alignItems:'center',fontSize:13,fontWeight:500}}>
+                <span className={`toggle ${s.cookieBanner?'on':''}`} onClick={()=> dispatch({type:'UPDATE_SETTINGS', patch:{cookieBanner: !s.cookieBanner}})}><i/></span>
+                Show cookie banner
+              </label>
+              <div style={{height:1,background:'var(--line)'}}/>
+              <div style={{fontSize:11,letterSpacing:'.06em',textTransform:'uppercase',color:'var(--faint)',fontWeight:700}}>Legal</div>
+              <label style={{fontSize:12,fontWeight:600}}>Top banner text</label>
+              <input className="input" value={s.legal?.bannerText||''} onChange={e=> dispatch({type:'UPDATE_LEGAL', patch:{bannerText:e.target.value}})} placeholder="Your data is safe…" />
+              <label style={{fontSize:12,fontWeight:600}}>Footer disclaimer</label>
+              <textarea className="input" rows={2} value={s.legal?.footerDisclaimer||''} onChange={e=> dispatch({type:'UPDATE_LEGAL', patch:{footerDisclaimer:e.target.value}})} placeholder="© 2026 Acme — All rights reserved" />
+              <label style={{fontSize:12,fontWeight:600}}>Privacy URL</label>
+              <input className="input" value={s.legal?.privacyUrl||''} onChange={e=> dispatch({type:'UPDATE_LEGAL', patch:{privacyUrl:e.target.value}})} placeholder="https://…/privacy" />
+              <label style={{fontSize:12,fontWeight:600}}>Terms URL</label>
+              <input className="input" value={s.legal?.termsUrl||''} onChange={e=> dispatch({type:'UPDATE_LEGAL', patch:{termsUrl:e.target.value}})} placeholder="https://…/terms" />
+            </div>
           )}
           {tab==='senders' && <div style={{fontSize:13,color:'var(--muted)'}}>Senders & WhatsApp — connect your domain and WhatsApp Business account here. Demo placeholder.</div>}
         </div>
@@ -117,9 +159,35 @@ function PreviewModal({ onClose }){
         target = matched ? matched.target : (lk.fallback || {kind:'next'})
       }
     }
-    const answered = blocks.find(b=> b.type==='quiz')
-    if(answered){
-      const chosen = answers[answered.trackingId]
+    // Priority 1-2: accumulate score/tags and resolve result via rules before linking
+    const { score, tags } = collectScoreAndTags(funnel, answers)
+    const session = { score, tags, lastResultRef: null }
+    // capture last assigned resultRef from chosen answers
+    const answeredQuiz = blocks.find(b=> b.type==='quiz')
+    if(answeredQuiz){
+      const chosen = answers[answeredQuiz.trackingId]
+      if(chosen){
+        const ansBlock = funnel.blocksById[chosen]
+        if(ansBlock?.resultRef) session.lastResultRef = ansBlock.resultRef
+      }
+    }
+    // if any collected score/tags, try result selection rules
+    let ruleResultId = null
+    if(score>0 || tags.length>0){
+      ruleResultId = resolveResultId(funnel, session)
+      // only treat as override if a rule actually matched (i.e., a result with selectionRules produced a hit distinct from fallback)
+      // resolveResultId already checks selectionRules; if no rule matches it returns lastResultRef or first result — so we require at least one rule to have matched
+      const hasRuleHit = (funnel.results||[]).some(r=> (r.selectionRules||[]).length>0 && resolveResultId({ ...funnel, results:[r] }, session)===r.id)
+      if(hasRuleHit && ruleResultId){
+        // when we are on last page or explicit result navigation, honor rule result
+        const isTerminal = idx===funnel.pages.length-1 || target.kind==='result' || target.kind==='next'
+        if(isTerminal){
+          setResultId(ruleResultId); return
+        }
+      }
+    }
+    if(answeredQuiz){
+      const chosen = answers[answeredQuiz.trackingId]
       if(chosen){
         const ansBlock = funnel.blocksById[chosen]
         if(ansBlock?.resultRef){ setResultId(ansBlock.resultRef); return }
@@ -127,7 +195,11 @@ function PreviewModal({ onClose }){
     }
     if(target.kind==='next'){
       if(idx < funnel.pages.length-1) setIdx(i=>i+1)
-      else { if(funnel.results[0]) setResultId(funnel.results[0].id) }
+      else {
+        // terminal: prefer rule result if any
+        const terminalId = ruleResultId || session.lastResultRef || funnel.results[0]?.id
+        if(terminalId) setResultId(terminalId)
+      }
     } else if(target.kind==='page'){
       const pi = funnel.pages.findIndex(p=>p.id===target.id)
       if(pi>=0) setIdx(pi)
@@ -139,12 +211,32 @@ function PreviewModal({ onClose }){
   }
   if(resultId){
     const r = funnel.results.find(x=>x.id===resultId)
+    const { score, tags } = collectScoreAndTags(funnel, answers)
+    const ctx = { score, brandName: funnel.settings.brandName, quizName: funnel.name, funnelName: funnel.name, firstName:'there', email:'' }
+    // collect report blocks from chosen answers
+    const reportBlocks = Object.values(answers).map(aid=>{
+      const blk = funnel.blocksById[aid]
+      if(!blk || blk.type!=='answer') return null
+      if(!blk.reportHeadline && !blk.reportBody && !blk.insightUrl) return null
+      return blk
+    }).filter(Boolean)
     return (
       <div style={{position:'fixed',inset:0,background:'#fafaf8',zIndex:85,display:'grid',placeItems:'center',padding:24}} onClick={onClose}>
         <div style={{width:'min(520px,100%)',background:'#fff',border:'1px solid var(--line)',borderRadius:20,padding:24,boxShadow:'var(--shadow-lg)',textAlign:'center'}} onClick={e=>e.stopPropagation()}>
           <div style={{width:56,height:56,borderRadius:99,background:theme.colors[2],color:'#fff',display:'grid',placeItems:'center',margin:'0 auto 12px',fontSize:22}}>✓</div>
-          <div style={{fontFamily:'Fraunces',fontSize:26,fontWeight:700,letterSpacing:'-.02em'}}>{r?.name || 'Your result'}</div>
-          <div style={{fontSize:14,color:'var(--muted)',marginTop:6}}>You're classified as <strong>{r?.letter}</strong> — this is where your terminal result page would render.</div>
+          <div style={{fontFamily: theme.font,fontSize:26,fontWeight:700,letterSpacing:'-.02em'}}>{interpolateTokens(r?.name || 'Your result', ctx)}</div>
+          <div style={{fontSize:14,color:'var(--muted)',marginTop:6}}>You're classified as <strong>{r?.letter}</strong> · Score <strong>{score}</strong>{tags.length? <> · Tags {tags.join(', ')}</>:null}</div>
+          {reportBlocks.length>0 && (
+            <div style={{marginTop:16,display:'flex',flexDirection:'column',gap:12,textAlign:'left'}}>
+              {reportBlocks.map(b=>(
+                <div key={b.id} style={{border:'1px solid var(--line)',borderRadius:12,padding:14,background:'#fafaf8'}}>
+                  {b.reportHeadline && <div style={{fontWeight:700,fontSize:14,marginBottom:4}}>{interpolateTokens(b.reportHeadline, ctx)}</div>}
+                  {b.reportBody && <div style={{fontSize:13,color:'var(--muted)',whiteSpace:'pre-wrap'}}>{interpolateTokens(b.reportBody, ctx)}</div>}
+                  {b.insightUrl && <a href={b.insightUrl} target="_blank" rel="noreferrer" style={{display:'inline-block',marginTop:8,fontSize:12,fontWeight:600,color:theme.colors[2]}}>{b.insightLabel||'Learn more'} →</a>}
+                </div>
+              ))}
+            </div>
+          )}
           <button className="publish-btn" style={{marginTop:16}} onClick={onClose}>Back to builder</button>
         </div>
       </div>
@@ -155,20 +247,42 @@ function PreviewModal({ onClose }){
       <div style={{display:'flex',flexDirection:'column',gap:10,marginTop:4}}>
         {(page?.blocks||[]).map(bid=>{
           const b = funnel.blocksById[bid]; if(!b) return null
-          if(b.type==='text') return <div key={bid} style={{fontFamily: theme.font, fontSize: b.style.size, fontWeight: b.style.bold?700:400, textAlign:b.style.align}}>{b.content}</div>
-          if(b.type==='button') return <button key={bid} className="btn btn-filled" style={{background:buttonBg(theme),alignSelf: b.style.align==='center'?'center':'stretch'}} onClick={goNext}>{b.content}</button>
+          const ctx = { brandName: funnel.settings.brandName, quizName: funnel.name, funnelName: funnel.name, score: collectScoreAndTags(funnel, answers).score, firstName:'there', email:'' }
+          if(b.type==='text') return <div key={bid} style={{fontFamily: theme.bodyFont||theme.font, fontSize: b.style.size, fontWeight: b.style.bold?700:400, textAlign:b.style.align}} dangerouslySetInnerHTML={{__html: interpolateTokens(b.content, ctx)}} />
+          if(b.type==='button') return <button key={bid} className="btn btn-filled" style={{fontFamily: theme.font, background:buttonBg(theme),alignSelf: b.style.align==='center'?'center':'stretch'}} onClick={goNext} dangerouslySetInnerHTML={{__html: interpolateTokens(b.content, ctx)}} />
           if(b.type==='image') return <div key={bid} className="img-wrap"><img src={b.content} alt="" /></div>
-          if(b.type==='quiz') return (
-            <div key={bid} className="quiz-wrap">
-              <div style={{fontWeight:700,marginBottom:10}}>{b.content?.question}</div>
-              <div className="quiz-grid" style={{gridTemplateColumns: device==='mobile'?'1fr':'1fr 1fr'}}>
-                {(b.children||[]).map(cid=>{
-                  const ans = funnel.blocksById[cid]
-                  return <button key={cid} className={`answer-card ${answers[b.trackingId]===cid?'selected':''}`} onClick={()=> setAnswers(a=>({...a,[b.trackingId]:cid}))} style={{textAlign:'left', display:'flex',gap:8,alignItems:'center'}}><span style={{width:36,height:36,borderRadius:8,background:'#f2f0ed',overflow:'hidden',flexShrink:0,display:'grid',placeItems:'center'}}><img src={`https://picsum.photos/seed/${cid}/80/80`} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/></span><span style={{flex:1}}>{ans?.content}</span></button>
-                })}
+          if(b.type==='quiz') {
+            const q = b
+            const display = q.optionDisplay||'text'
+            const handlePick = (cid)=>{
+              setAnswers(a=>({...a,[q.trackingId]:cid}))
+              const auto = q.autoAdvance ?? funnel.settings.autoAdvance
+              const delay = q.autoAdvanceDelayMs ?? funnel.settings.autoAdvanceDelayMs ?? 600
+              if(auto){
+                setTimeout(()=> goNext(), delay)
+              }
+            }
+            return (
+              <div key={bid} className="quiz-wrap">
+                <div style={{fontFamily: theme.font, fontWeight:700,marginBottom:10}} dangerouslySetInnerHTML={{__html: interpolateTokens(q.content?.question||'', ctx)}} />
+                <div className="quiz-grid" style={{gridTemplateColumns: device==='mobile'?'1fr':'1fr 1fr'}}>
+                  {(q.children||[]).map(cid=>{
+                    const ans = funnel.blocksById[cid]
+                    const icon = ans?.icon
+                    const showIcon = display==='icon' && icon
+                    const showImg = display==='image'
+                    return <button key={cid} className={`answer-card ${answers[q.trackingId]===cid?'selected':''}`} onClick={()=> handlePick(cid)} style={{textAlign:'left', display:'flex',gap:8,alignItems:'center'}}>
+                      {showIcon ? <span style={{width:36,height:36,borderRadius:8,background:'#f2f0ed',flexShrink:0,display:'grid',placeItems:'center',fontSize:18}}>{icon.startsWith('lucide:')? icon.slice(7): icon}</span>
+                       : showImg ? <span style={{width:36,height:36,borderRadius:8,background:'#f2f0ed',overflow:'hidden',flexShrink:0,display:'grid',placeItems:'center'}}><img src={`https://picsum.photos/seed/${cid}/80/80`} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/></span>
+                       : <span style={{width:36,height:36,borderRadius:8,background:'#f2f0ed',overflow:'hidden',flexShrink:0,display:'grid',placeItems:'center'}}><img src={`https://picsum.photos/seed/${cid}/80/80`} alt="" style={{width:'100%',height:'100%',objectFit:'cover',opacity: showIcon||showImg?1:0.3}}/></span>}
+                      <span style={{flex:1,fontFamily: theme.bodyFont||theme.font}}>{interpolateTokens(ans?.content||'', ctx)}</span>
+                    </button>
+                  })}
+                </div>
+                {q.autoAdvance && <div style={{fontSize:11,color:'var(--faint)',marginTop:6}}>Auto-advances in {q.autoAdvanceDelayMs}ms — toggle off in quiz settings</div>}
               </div>
-            </div>
-          )
+            )
+          }
           if(b.type==='form') return <div key={bid} className="form-box"><input placeholder={b.content?.placeholder} /><button className="btn btn-filled" style={{background:buttonBg(theme)}} onClick={goNext}>Continue</button></div>
           return null
         })}
@@ -601,8 +715,38 @@ function LeftRail({ onRequestAdd }){
               <input className="input" value={t.name} onChange={e=>dispatch({type:'UPDATE_THEME', id:t.id, patch:{name:e.target.value}})} />
             </div>
             <div className="control-row">
-              <div className="control-label">Font</div>
+              <div className="control-label">Headline font</div>
               <select className="select" value={t.font} onChange={e=>dispatch({type:'UPDATE_THEME', id:t.id, patch:{font:e.target.value}})}>
+                <optgroup label="Sans — most popular">
+                  <option>Inter</option>
+                  <option>DM Sans</option>
+                  <option>Outfit</option>
+                  <option>Space Grotesk</option>
+                  <option>Plus Jakarta Sans</option>
+                  <option>Sora</option>
+                </optgroup>
+                <optgroup label="Serif — editorial">
+                  <option>Fraunces</option>
+                  <option>Playfair Display</option>
+                  <option>Newsreader</option>
+                  <option>Cormorant Garamond</option>
+                  <option>Instrument Serif</option>
+                  <option>Libre Baskerville</option>
+                </optgroup>
+                <optgroup label="Whimsical / Display">
+                  <option>Caveat</option>
+                  <option>Pacifico</option>
+                  <option>Fredoka</option>
+                  <option>Bricolage Grotesque</option>
+                </optgroup>
+                <optgroup label="Mono">
+                  <option>JetBrains Mono</option>
+                </optgroup>
+              </select>
+            </div>
+            <div className="control-row">
+              <div className="control-label">Body font <span style={{fontWeight:400,color:'var(--faint)'}}>(optional — defaults to headline)</span></div>
+              <select className="select" value={t.bodyFont||t.font} onChange={e=>dispatch({type:'UPDATE_THEME', id:t.id, patch:{bodyFont:e.target.value}})}>
                 <optgroup label="Sans — most popular">
                   <option>Inter</option>
                   <option>DM Sans</option>
@@ -731,12 +875,7 @@ function LeftRail({ onRequestAdd }){
               </div>
               <div className="tree" style={{marginTop:8}}>
                 {funnel.results.map(r=>(
-                  <div key={r.id} className="tree-item result-row" style={{justifyContent:'space-between'}}>
-                    <span style={{display:'flex',gap:8,alignItems:'center'}}><span className="num">{r.letter}</span><span style={{fontSize:13,fontWeight:600}}>{r.name}</span></span>
-                    <button className="result-delete" style={{border:'1px solid var(--line)',background:'#fff',width:26,height:26,borderRadius:99,display:'grid',placeItems:'center',cursor:'pointer',opacity:0,transition:'opacity .12s'}} onClick={()=>{
-                      if(confirm(`Delete result "${r.name}"? This cannot be undone.`)) dispatch({type:'DELETE_RESULT', id:r.id})
-                    }}>×</button>
-                  </div>
+                  <ResultRow key={r.id} result={r} funnel={funnel} />
                 ))}
               </div>
             </div>
@@ -745,24 +884,9 @@ function LeftRail({ onRequestAdd }){
               <div className="panel-title">Messages</div>
               <div style={{marginTop:8,display:'flex',flexDirection:'column',gap:8}}>
                 {funnel.messages.map(m=>(
-                  <div key={m.id} className="section-card">
-                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                      <strong style={{fontSize:13}}>{m.name}</strong>
-                      <span className="pill" style={{background: m.status==='offline'?'#f2f0ed':'#e6f4ea', color: m.status==='offline'?'var(--muted)':'#137333'}}>{m.status}</span>
-                    </div>
-                    <div style={{marginTop:8,display:'flex',flexDirection:'column',gap:6}}>
-                      {m.sequence.map(n=>(
-                        <div key={n.id} style={{display:'flex',gap:8,alignItems:'center',fontSize:12,padding:'6px 8px',border:'1px solid var(--line)',borderRadius:8, background:'#fff'}}>
-                          <span style={{width:6,height:6,borderRadius:99,background: n.type==='trigger'?'#111': n.type==='delay'?'#f59e0b':'#2563eb'}}/>
-                          <span style={{fontWeight:600}}>{n.label}</span>
-                          <span style={{marginLeft:'auto',color:'var(--faint)',fontSize:11}}>{n.type}</span>
-                        </div>
-                      ))}
-                    </div>
-                    <button className="chip" style={{marginTop:8}} onClick={()=>alert('Test send — not wired to backend in demo')}>Test send</button>
-                  </div>
+                  <MessageCard key={m.id} message={m} />
                 ))}
-                <div className="empty">Create sequence</div>
+                <div className="empty">Create sequence — messages reuse the same block editor model</div>
               </div>
             </div>
           </>
@@ -1031,8 +1155,36 @@ function PropertyPanel({ block, theme, funnel }){
             Reveal answers (social proof)
           </label>
           <div className="control-row">
+            <div className="control-label">Display mode</div>
+            <div className="seg" style={{display:'flex',gap:4}}>
+              {[
+                ['text','Text'],
+                ['icon','Icon + text'],
+                ['image','Image + text'],
+              ].map(([id,label])=> (
+                <button key={id} className={block.optionDisplay===id?'active':''} onClick={()=>dispatch({type:'UPDATE_BLOCK', id:block.id, patch:{optionDisplay:id}})} style={{flex:1,padding:'6px 8px',borderRadius:8,border:'1px solid var(--line)',background: block.optionDisplay===id?'#111':'#fff',color: block.optionDisplay===id?'#fff':'var(--muted)',fontWeight:600,fontSize:12,cursor:'pointer'}}>{label}</button>
+              ))}
+            </div>
+            <div style={{fontSize:11,color:'var(--faint)'}}>Set once per quiz — controls how each answer renders</div>
+          </div>
+          <div className="control-row">
+            <div className="control-label">Behavior</div>
+            <label className="row" style={{fontSize:12,gap:8}}>
+              <span className={`toggle ${block.autoAdvance?'on':''}`} onClick={()=>dispatch({type:'UPDATE_BLOCK', id:block.id, patch:{autoAdvance: !block.autoAdvance}})}><i/></span>
+              Auto-advance on choice
+            </label>
+            {block.autoAdvance && (
+              <div style={{display:'flex',gap:8,alignItems:'center',marginTop:6}}>
+                <span style={{fontSize:11,color:'var(--muted)'}}>Delay</span>
+                <input className="slider" type="range" min={0} max={2000} step={100} value={block.autoAdvanceDelayMs} onChange={e=>dispatch({type:'UPDATE_BLOCK', id:block.id, patch:{autoAdvanceDelayMs: Number(e.target.value)}})} style={{flex:1}} />
+                <span style={{fontSize:12,fontWeight:600,minWidth:48,textAlign:'right'}}>{block.autoAdvanceDelayMs}ms</span>
+              </div>
+            )}
+          </div>
+          <div className="control-row">
             <div className="control-label">Personalization</div>
             <select className="select" defaultValue=""><option value="">None</option><option>First name</option><option>City</option></select>
+            <div style={{fontSize:11,color:'var(--faint)'}}>Tokens: {'{{firstName}} {{email}} {{brandName}} {{score}}'} — also available in result content</div>
           </div>
         </>
       )}
@@ -1062,13 +1214,45 @@ function PropertyPanel({ block, theme, funnel }){
             <button className="chip" onClick={()=>setLogicOpen(!logicOpen)}>{logicOpen?'Hide rules':'Edit rules…'}</button>
           )}
           {isAnswer && (
-            <div className="control-row" style={{marginTop:8}}>
-              <div className="control-label">Result assignment</div>
-              <select className="select" value={block.resultRef||''} onChange={e=>dispatch({type:'UPDATE_BLOCK', id:block.id, patch:{ resultRef: e.target.value || null}})}>
-                <option value="">No result</option>
-                {funnel.results.map(r=> <option key={r.id} value={r.id}>{r.letter}: {r.name}</option>)}
-              </select>
-            </div>
+            <>
+              <div className="control-row" style={{marginTop:8}}>
+                <div className="control-label">Result assignment</div>
+                <select className="select" value={block.resultRef||''} onChange={e=>dispatch({type:'UPDATE_BLOCK', id:block.id, patch:{ resultRef: e.target.value || null}})}>
+                  <option value="">No result</option>
+                  {funnel.results.map(r=> <option key={r.id} value={r.id}>{r.letter}: {r.name}</option>)}
+                </select>
+              </div>
+              <div style={{border:'1px solid var(--line)',borderRadius:10,padding:10,background:'#fafaf8',marginTop:8}}>
+                <div style={{fontSize:11,letterSpacing:'.06em',textTransform:'uppercase',color:'var(--faint)',fontWeight:700,marginBottom:6}}>Scoring</div>
+                <div className="control-row">
+                  <div className="control-label">Score</div>
+                  <input className="input" type="number" value={block.score ?? 0} onChange={e=>dispatch({type:'UPDATE_BLOCK', id:block.id, patch:{score: Number(e.target.value)||0}})} />
+                </div>
+                <div className="control-row">
+                  <div className="control-label">Tags <span style={{fontWeight:400,color:'var(--faint)'}}>(comma-separated)</span></div>
+                  <input className="input" value={(block.tags||[]).join(', ')} onChange={e=>dispatch({type:'UPDATE_BLOCK', id:block.id, patch:{tags: e.target.value.split(',').map(s=>s.trim()).filter(Boolean)}})} placeholder="e.g. qualified, enterprise" />
+                </div>
+                <div className="control-row">
+                  <div className="control-label">Icon <span style={{fontWeight:400,color:'var(--faint)'}}>(Lucide name or emoji)</span></div>
+                  <div style={{display:'flex',gap:6}}>
+                    <input className="input" style={{flex:1}} value={block.icon||''} onChange={e=>dispatch({type:'UPDATE_BLOCK', id:block.id, patch:{icon: e.target.value}})} placeholder="star or 😀 or lucide:check" />
+                    {block.icon && <button className="chip" onClick={()=>dispatch({type:'UPDATE_BLOCK', id:block.id, patch:{icon:''}})}>Clear</button>}
+                  </div>
+                </div>
+                <details style={{marginTop:8}}>
+                  <summary style={{fontSize:12,fontWeight:600,cursor:'pointer',color:'var(--muted)'}}>Result content (optional)</summary>
+                  <div style={{display:'flex',flexDirection:'column',gap:8,marginTop:8}}>
+                    <input className="input" value={block.reportHeadline||''} onChange={e=>dispatch({type:'UPDATE_BLOCK', id:block.id, patch:{reportHeadline:e.target.value}})} placeholder="Report headline" />
+                    <textarea className="input" rows={2} value={block.reportBody||''} onChange={e=>dispatch({type:'UPDATE_BLOCK', id:block.id, patch:{reportBody:e.target.value}})} placeholder="Report body — supports {{firstName}} {{score}} {{brandName}}" />
+                    <div style={{display:'flex',gap:6}}>
+                      <input className="input" style={{flex:1}} value={block.insightLabel||''} onChange={e=>dispatch({type:'UPDATE_BLOCK', id:block.id, patch:{insightLabel:e.target.value}})} placeholder="Insight label" />
+                      <input className="input" style={{flex:1}} value={block.insightUrl||''} onChange={e=>dispatch({type:'UPDATE_BLOCK', id:block.id, patch:{insightUrl:e.target.value}})} placeholder="https://…" />
+                    </div>
+                    <div style={{fontSize:11,color:'var(--faint)'}}>Tokens: {'{{firstName}} {{fullName}} {{email}} {{brandName}} {{quizName}} {{score}}'}</div>
+                  </div>
+                </details>
+              </div>
+            </>
           )}
         </div>
       )}
@@ -1212,6 +1396,143 @@ function RuleBuilder({ block, funnel, onClose }){
   )
 }
 
+function ResultRow({ result, funnel }){
+  const { dispatch } = useFunnel()
+  const [open,setOpen]=useState(false)
+  const [editing,setEditing]=useState(false)
+  const [draft,setDraft]=useState(result.name)
+  const rules = result.selectionRules||[]
+  return (
+    <div className="section-card" style={{padding:8}}>
+      <div style={{display:'flex',gap:8,alignItems:'center',justifyContent:'space-between'}}>
+        <span style={{display:'flex',gap:8,alignItems:'center',flex:1}}>
+          <span className="num">{result.letter}</span>
+          {editing ? (
+            <input className="input" style={{flex:1,padding:'4px 8px',fontSize:13}} value={draft} autoFocus onChange={e=>setDraft(e.target.value)} onBlur={()=>{ dispatch({type:'UPDATE_RESULT', id:result.id, patch:{name:draft}}); setEditing(false)}} onKeyDown={e=>{ if(e.key==='Enter'){dispatch({type:'UPDATE_RESULT', id:result.id, patch:{name:draft}}); setEditing(false)}}}/>
+          ) : (
+            <span style={{fontSize:13,fontWeight:600,flex:1}} onClick={()=>setEditing(true)} title="Click to rename">{result.name}</span>
+          )}
+        </span>
+        <span style={{display:'flex',gap:4,alignItems:'center'}}>
+          <button className="chip" style={{fontSize:11,padding:'4px 8px'}} onClick={()=>setOpen(o=>!o)}>{open?'Hide rules':`Rules${rules.length?` · ${rules.length}`:''}`}</button>
+          <button className="chip" style={{padding:'4px 6px'}} onClick={()=>{ if(confirm(`Delete result "${result.name}"?`)) dispatch({type:'DELETE_RESULT', id:result.id})}}>×</button>
+        </span>
+      </div>
+      {rules.length>0 && !open && <div style={{fontSize:11,color:'var(--muted)',marginTop:4}}>{rules.length} rule{rules.length>1?'s':''} — score/tag logic</div>}
+      {open && <ResultRulesEditor result={result} />}
+    </div>
+  )
+}
+
+function ResultRulesEditor({ result }){
+  const { funnel, dispatch } = useFunnel()
+  const rules = result.selectionRules||[]
+  const addRule = ()=>{
+    const nr=[...rules, {conditions:[{operator:'score_gte', value:'10'}]}]
+    dispatch({type:'UPDATE_RESULT', id:result.id, patch:{selectionRules:nr}})
+  }
+  const updateRule = (idx, patch)=>{
+    const nr=[...rules]; nr[idx]={...nr[idx],...patch}; dispatch({type:'UPDATE_RESULT', id:result.id, patch:{selectionRules:nr}})
+  }
+  const removeRule = (idx)=>{
+    const nr=rules.filter((_,i)=>i!==idx); dispatch({type:'UPDATE_RESULT', id:result.id, patch:{selectionRules:nr}})
+  }
+  return (
+    <div style={{marginTop:8,borderTop:'1px solid var(--line)',paddingTop:8,display:'flex',flexDirection:'column',gap:8}}>
+      <div style={{fontSize:11,letterSpacing:'.06em',textTransform:'uppercase',color:'var(--faint)',fontWeight:700}}>Result selection — first match wins (score/tag)</div>
+      {rules.map((r,idx)=>(
+        <div key={idx} style={{border:'1px solid var(--line)',borderRadius:8,padding:8,background:'#fff',display:'flex',flexDirection:'column',gap:6}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <span style={{fontSize:11,fontWeight:700,color:'var(--faint)'}}>Rule {idx+1}</span>
+            <button className="chip" onClick={()=>removeRule(idx)}>Remove</button>
+          </div>
+          {(r.conditions||[]).map((c,ci)=>(
+            <div key={ci} style={{display:'flex',gap:6,alignItems:'center',flexWrap:'wrap'}}>
+              <select className="select" style={{minWidth:120}} value={c.operator} onChange={e=>{
+                const nr=[...(r.conditions||[])]; nr[ci]={...nr[ci], operator:e.target.value}; updateRule(idx,{conditions:nr})
+              }}>
+                <option value="score_gte">score ≥</option>
+                <option value="score_lte">score ≤</option>
+                <option value="score_between">score between (a,b)</option>
+                <option value="has_tag">has tag</option>
+                <option value="equals">equals (tag or score)</option>
+              </select>
+              <input className="input" style={{flex:1,minWidth:80}} value={c.value||''} onChange={e=>{
+                const nr=[...(r.conditions||[])]; nr[ci]={...nr[ci], value:e.target.value}; updateRule(idx,{conditions:nr})
+              }} placeholder={c.operator==='has_tag'?'tag name': c.operator==='score_between'?'e.g. 10,20':'value'} />
+              {(r.conditions||[]).length>1 && <button className="chip" onClick={()=>{ const nr=(r.conditions||[]).filter((_,i)=>i!==ci); updateRule(idx,{conditions:nr})}}>✕</button>}
+            </div>
+          ))}
+          <button className="chip" onClick={()=>{
+            const nr=[...(r.conditions||[]), {operator:'has_tag', value:''}]; updateRule(idx,{conditions:nr})
+          }}>+ Add Condition (AND)</button>
+        </div>
+      ))}
+      <button className="chip" onClick={addRule}>+ Add rule</button>
+      <div style={{fontSize:11,color:'var(--faint)'}}>Reuses the same first-match-wins dialog as answer linking. Manual result assignment remains the fallback.</div>
+    </div>
+  )
+}
+
+function MessageCard({ message }){
+  const { funnel, dispatch } = useFunnel()
+  const [openId,setOpenId]=useState(null)
+  const updateNode = (nodeId, patch)=>{
+    const seq = message.sequence.map(n=> n.id===nodeId ? {...n, ...patch} : n)
+    dispatch({type:'UPDATE_MESSAGE_SEQUENCE', messageId: message.id, sequence: seq})
+  }
+  return (
+    <div className="section-card">
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+        <strong style={{fontSize:13}}>{message.name}</strong>
+        <span className="pill" style={{background: message.status==='offline'?'#f2f0ed':'#e6f4ea', color: message.status==='offline'?'var(--muted)':'#137333'}}>{message.status}</span>
+      </div>
+      <div style={{marginTop:8,display:'flex',flexDirection:'column',gap:6}}>
+        {message.sequence.map(n=>(
+          <div key={n.id} style={{border:'1px solid var(--line)',borderRadius:8,background:'#fff',overflow:'hidden'}}>
+            <div style={{display:'flex',gap:8,alignItems:'center',fontSize:12,padding:'6px 8px',cursor: n.type==='email'?'pointer':'default'}} onClick={()=> setOpenId(openId===n.id?null:n.id)}>
+              <span style={{width:6,height:6,borderRadius:99,background: n.type==='trigger'?'#111': n.type==='delay'?'#f59e0b':'#2563eb'}}/>
+              <span style={{fontWeight:600,flex:1}}>{n.label}</span>
+              <span style={{color:'var(--faint)',fontSize:11}}>{n.type}</span>
+              {n.type==='email' && <span style={{fontSize:11,color:'var(--muted)'}}>{openId===n.id?'▴':'▾'}</span>}
+            </div>
+            {n.type==='email' && openId===n.id && (
+              <div style={{padding:8,borderTop:'1px solid var(--line)',display:'flex',flexDirection:'column',gap:8,background:'#fafaf8'}}>
+                <label style={{fontSize:11,fontWeight:600}}>Subject</label>
+                <input className="input" value={n.subject||''} onChange={e=> updateNode(n.id,{subject:e.target.value, label:e.target.value||'Email'})} placeholder="Your personalized plan" />
+                <label style={{fontSize:11,fontWeight:600}}>Body <span style={{fontWeight:400,color:'var(--faint)'}}>— supports {'{{firstName}} {{score}} {{brandName}}'}</span></label>
+                <textarea className="input" rows={3} value={n.body||''} onChange={e=> updateNode(n.id,{body:e.target.value})} placeholder="Hi {{firstName}}, …" />
+                <label style={{fontSize:11,fontWeight:600}}>Recipient</label>
+                <div style={{display:'flex',gap:6}}>
+                  <button className={`chip ${n.recipientMode==='lead'?'active':''}`} onClick={()=>updateNode(n.id,{recipientMode:'lead'})}>Send to lead</button>
+                  <button className={`chip ${n.recipientMode==='staff'?'active':''}`} onClick={()=>updateNode(n.id,{recipientMode:'staff'})}>Send to staff</button>
+                </div>
+                {n.recipientMode==='staff' && (
+                  <input className="input" value={n.staffEmails||''} onChange={e=> updateNode(n.id,{staffEmails:e.target.value})} placeholder="staff@acme.com, team@acme.com" />
+                )}
+                <div style={{display:'flex',gap:6}}>
+                  <button className="chip" onClick={()=>alert(`Test send\nTo: ${n.recipientMode==='staff'? (n.staffEmails||'staff') : 'lead'}\nSubject: ${n.subject}`)}>Test send</button>
+                </div>
+              </div>
+            )}
+            {n.type==='delay' && openId===n.id && (
+              <div style={{padding:8,borderTop:'1px solid var(--line)',display:'flex',gap:8,alignItems:'center',background:'#fafaf8'}}>
+                <span style={{fontSize:11,color:'var(--muted)'}}>Delay</span>
+                <input className="input" type="number" style={{flex:1}} value={Math.round((n.delayMs||3600000)/60000)} onChange={e=> updateNode(n.id,{delayMs: Number(e.target.value)*60000, label:`Wait ${e.target.value} min`})} />
+                <span style={{fontSize:11,color:'var(--muted)'}}>minutes</span>
+              </div>
+            )}
+            {n.type!=='email' && openId===n.id && n.type!=='delay' && (
+              <div style={{padding:8,borderTop:'1px solid var(--line)',background:'#fafaf8',fontSize:11,color:'var(--muted)'}}>Trigger — fires when funnel completed</div>
+            )}
+          </div>
+        ))}
+      </div>
+      <button className="chip" style={{marginTop:8}} onClick={()=>alert('Test send — headless demo; email body uses {{tokens}} from Priority 6')}>Test send</button>
+    </div>
+  )
+}
+
 function InlineToolbar({ targetRef }){
   const [visible,setVisible]=useState(false)
   const [pos,setPos]=useState({top:0,left:0})
@@ -1303,16 +1624,22 @@ function BlockRenderer({ blockId, depth=0, onSelect }){
     }
   } : {}
 
+  // P6, P8: interpolation + bodyFont split
+  const scoreCtx = { score: 0, brandName: funnel.settings.brandName, quizName: funnel.name, funnelName: funnel.name, firstName:'there', email:'' }
+  // bodyFont for body copy, headline font for titles/CTAs
+  const headlineFont = theme.font
+  const bodyFont = theme.bodyFont||theme.font
   let inner=null
   if(block.type==='text'){
+    const txtFont = block.style.font ? fontFamily : bodyFont
     inner = (
       <div style={{position:'relative'}}>
-        <div ref={ref} className="t-text" style={{ fontFamily, color, lineHeight: block.style.lineHeight ?? 1.45, fontSize: (typeof block.style.size==='number'? block.style.size : SIZE_PRESETS[block.style.size]||20), fontWeight: block.style.bold?700:400, fontStyle:block.style.italic?'italic':'normal', textDecoration:block.style.underline?'underline':'none', textAlign:block.style.align }} {...contentEditableProps} dangerouslySetInnerHTML={{__html: block.content || ''}} />
+        <div ref={ref} className="t-text" style={{ fontFamily: txtFont, color, lineHeight: block.style.lineHeight ?? 1.45, fontSize: (typeof block.style.size==='number'? block.style.size : SIZE_PRESETS[block.style.size]||20), fontWeight: block.style.bold?700:400, fontStyle:block.style.italic?'italic':'normal', textDecoration:block.style.underline?'underline':'none', textAlign:block.style.align }} {...contentEditableProps} dangerouslySetInnerHTML={{__html: interpolateTokens(block.content || '', scoreCtx)}} />
         {editing && <InlineToolbar targetRef={ref} />}
       </div>
     )
   } else if(block.type==='button'){
-    inner = <div style={{textAlign:block.style.align, position:'relative'}}><div ref={ref} className="btn btn-filled" style={{ background: buttonBg(theme), color:'#fff', borderRadius: radius, fontFamily, lineHeight: block.style.lineHeight ?? 1.45, display:'inline-flex' }} {...contentEditableProps} dangerouslySetInnerHTML={{__html: block.content || ''}} />{editing && <InlineToolbar targetRef={ref} />}</div>
+    inner = <div style={{textAlign:block.style.align, position:'relative'}}><div ref={ref} className="btn btn-filled" style={{ background: buttonBg(theme), color:'#fff', borderRadius: radius, fontFamily: headlineFont, lineHeight: block.style.lineHeight ?? 1.45, display:'inline-flex' }} {...contentEditableProps} dangerouslySetInnerHTML={{__html: interpolateTokens(block.content || '', scoreCtx)}} />{editing && <InlineToolbar targetRef={ref} />}</div>
   } else if(block.type==='image'){
     if(String(block.content).startsWith('icon:')){
       inner = <div style={{fontSize:48, textAlign:'center', padding:20, color}}>{String(block.content).slice(5)}</div>
@@ -1354,9 +1681,9 @@ function BlockRenderer({ blockId, depth=0, onSelect }){
     </div>
   } else if(block.type==='quiz'){
     inner = (
-      <div className="quiz-wrap" style={{borderRadius: radius, fontFamily}}>
+      <div className="quiz-wrap" style={{borderRadius: radius, fontFamily: headlineFont}}>
         <div style={{position:'relative'}}>
-          <div className="quiz-title" style={{color, lineHeight: block.style.lineHeight ?? 1.45, textAlign:block.style.align, fontSize: (typeof block.style.size==='number'? block.style.size : 20)}} ref={ref} {...(editing?contentEditableProps:{})} dangerouslySetInnerHTML={{__html: block.content?.question || ''}}
+          <div className="quiz-title" style={{fontFamily: headlineFont, color, lineHeight: block.style.lineHeight ?? 1.45, textAlign:block.style.align, fontSize: (typeof block.style.size==='number'? block.style.size : 20)}} ref={ref} {...(editing?contentEditableProps:{})} dangerouslySetInnerHTML={{__html: interpolateTokens(block.content?.question || '', scoreCtx)}}
             onClick={e=>{
               e.stopPropagation()
               if(isSelected){
@@ -1375,6 +1702,10 @@ function BlockRenderer({ blockId, depth=0, onSelect }){
             if(!ans) return null
             const isAnsSelected = selectedBlockId===cid
             const isEditingAns = editingAnswerId===cid
+            const display = block.optionDisplay||'text'
+            const icon = ans.icon||''
+            const showIcon = display==='icon' && !!icon
+            const showImg = display==='image'
             return (
               <div key={cid}
                 className={`answer-card ${isAnsSelected?'selected':''}`}
@@ -1392,12 +1723,18 @@ function BlockRenderer({ blockId, depth=0, onSelect }){
                 }}
                 style={{borderRadius: radius-4, position:'relative', cursor:'pointer', userSelect: isEditingAns?'text':'none'}}
               >
-                <div className="answer-thumb" style={{pointerEvents:'none'}}><img src={`https://picsum.photos/seed/${cid}/80/80`} alt="" style={{pointerEvents:'none'}}/></div>
+                {showIcon ? (
+                  <span style={{width:36,height:36,borderRadius:8,background:'#f2f0ed',flexShrink:0,display:'grid',placeItems:'center',fontSize:18,pointerEvents:'none'}}>{icon.startsWith('lucide:')? icon.slice(7): icon}</span>
+                ) : showImg ? (
+                  <div className="answer-thumb" style={{pointerEvents:'none'}}><img src={`https://picsum.photos/seed/${cid}/80/80`} alt="" style={{pointerEvents:'none'}}/></div>
+                ) : (
+                  <div className="answer-thumb" style={{pointerEvents:'none',opacity: ans.icon?0.4:1}}><img src={`https://picsum.photos/seed/${cid}/80/80`} alt="" style={{pointerEvents:'none'}}/></div>
+                )}
                 <div
                   data-answer-id={cid}
                   contentEditable={isEditingAns}
                   suppressContentEditableWarning
-                  dangerouslySetInnerHTML={{__html: ans.content || ''}}
+                  dangerouslySetInnerHTML={{__html: interpolateTokens(ans.content || '', scoreCtx)}}
                   onBlur={(e)=>{
                     const html=e.currentTarget.innerHTML||''
                     if(html!==ans.content) dispatch({type:'UPDATE_BLOCK_CONTENT', id:cid, content: html})
@@ -1408,15 +1745,17 @@ function BlockRenderer({ blockId, depth=0, onSelect }){
                     if(e.key==='Escape'){ setEditingAnswerId(null); e.currentTarget.blur() }
                   }}
                   onClick={(e)=>{ if(isEditingAns) e.stopPropagation() }}
-                  style={{fontSize: (ans.style?.size ? (SIZE_PRESETS[ans.style.size] ?? ans.style.size) : 13), lineHeight: ans.style?.lineHeight ?? block.style.lineHeight ?? 1.45, fontFamily: ans.style?.font || theme.font, fontWeight: ans.style?.bold ? 700 : 600, fontStyle: ans.style?.italic ? 'italic':'normal', textDecoration: ans.style?.underline ? 'underline':'none', color: resolveColor(ans.style?.color, theme) || undefined, flex:1, outline:'none', cursor: isEditingAns?'text':'pointer', minWidth:0}}
+                  style={{fontSize: (ans.style?.size ? (SIZE_PRESETS[ans.style.size] ?? ans.style.size) : 13), lineHeight: ans.style?.lineHeight ?? block.style.lineHeight ?? 1.45, fontFamily: ans.style?.font || bodyFont, fontWeight: ans.style?.bold ? 700 : 600, fontStyle: ans.style?.italic ? 'italic':'normal', textDecoration: ans.style?.underline ? 'underline':'none', color: resolveColor(ans.style?.color, theme) || undefined, flex:1, outline:'none', cursor: isEditingAns?'text':'pointer', minWidth:0}}
                 />
-                {isAnsSelected && !isEditingAns && <span className="badge" style={{opacity:1, position:'absolute', top:-8, left:10, background:'var(--blue)', color:'#fff', borderColor:'var(--blue)'}}>Answer</span>}
+                {isAnsSelected && !isEditingAns && <span className="badge" style={{opacity:1, position:'absolute', top:-8, left:10, background:'var(--blue)', color:'#fff', borderColor:'var(--blue)'}}>Answer{ans.score?` · ${ans.score}pt`:''}{ans.tags?.length?` · ${ans.tags.join(',')}`:''}</span>}
                 {ans.resultRef && <span style={{fontSize:10,background:'#111',color:'#fff',padding:'2px 6px',borderRadius:99, pointerEvents:'none'}}>{funnel.results.find(r=>r.id===ans.resultRef)?.letter || '→'}</span>}
+                {ans.icon && !showIcon && <span style={{fontSize:10,color:'var(--faint)',pointerEvents:'none'}} title={ans.icon}>{ans.icon.slice(0,2)}</span>}
               </div>
             )
           })}
         </div>
         {block.content?.revealAnswers && <div style={{marginTop:10, fontSize:11, color:'var(--muted)'}}>Reveal answers: 42% chose option A · 28% B · 18% C · 12% D</div>}
+        {block.autoAdvance && <div style={{fontSize:11,color:'var(--faint)',marginTop:6}}>Auto-advance after {block.autoAdvanceDelayMs}ms</div>}
       </div>
     )
   } else if(block.type==='answer'){
@@ -1597,10 +1936,13 @@ function Canvas({ previewBlock, setPreviewBlock, previewBlocks, setPreviewBlocks
                 <span style={{flex:1,background:'#fff',border:'1px solid #e8e6e1',borderRadius:99,padding:'5px 12px',fontSize:12,color:'#6b6b6b',display:'flex',alignItems:'center',gap:6}}><span style={{opacity:.5}}>🔒</span> perspective.test/{page?.slug || 'welcome'}</span>
               </div>
             )}
-            {funnel.settings.progressBar && (
-              <div style={{height:4, background:'#efede9', flexShrink:0, borderRadius:99, overflow:'hidden', margin:'6px 10px 0'}}>
+            {(funnel.settings.progressStyle ? funnel.settings.progressStyle!=='hidden' : funnel.settings.progressBar) && (
+              <div style={{height: (funnel.settings.progressStyle==='thin'?2:4), background:'#efede9', flexShrink:0, borderRadius:99, overflow:'hidden', margin:'6px 10px 0'}}>
                 <div style={{width:`${progress}%`, height:'100%', background: theme.colors[2], transition:'width .3s', borderRadius:99}}/>
               </div>
+            )}
+            {funnel.settings.legal?.bannerText && (
+              <div style={{background: theme.colors[2], color:'#fff', textAlign:'center', padding:'6px 10px', fontSize:11, fontWeight:600, flexShrink:0}}>{funnel.settings.legal.bannerText}</div>
             )}
             <div className="canvas-inner" onDragOver={e=>e.preventDefault()} style={{flex:1, overflowY:'auto', padding: device==='mobile' ? '12px 16px 18px' : device==='tablet' ? '18px' : '20px', display:'flex', flexDirection:'column', gap:0}}>
               {device==='mobile' && <div style={{width:36,height:4,background:'#e8e6e1',borderRadius:99,margin:'0 auto 10px', flexShrink:0}}/>}
@@ -1724,6 +2066,9 @@ function Canvas({ previewBlock, setPreviewBlock, previewBlocks, setPreviewBlocks
             }
             window.dispatchEvent(new CustomEvent('open-library'))
           }}>+</button>
+          {funnel.settings.legal?.footerDisclaimer && (
+            <div style={{marginTop:16,padding:'10px 12px',background:'#f5f4f1',border:'1px solid var(--line)',borderRadius:8,fontSize:11,color:'var(--muted)',textAlign:'center'}}>{funnel.settings.legal.footerDisclaimer} {funnel.settings.legal?.privacyUrl && <><a href={funnel.settings.legal.privacyUrl} target="_blank" rel="noreferrer" style={{color:theme.colors[2],fontWeight:600}}>Privacy</a> </>}{funnel.settings.legal?.termsUrl && <a href={funnel.settings.legal.termsUrl} target="_blank" rel="noreferrer" style={{color:theme.colors[2],fontWeight:600}}>Terms</a>}</div>
+          )}
             </div>
           </div>
         </div>
@@ -1765,6 +2110,9 @@ function Shell(){
     document.documentElement.style.setProperty('--theme-fg', theme.colors[1])
     document.documentElement.style.setProperty('--theme-accent', theme.colors[2])
     document.documentElement.style.setProperty('--theme-accent2', theme.colors[3])
+    // P8: headline vs body font variables
+    document.documentElement.style.setProperty('--theme-font', theme.font)
+    document.documentElement.style.setProperty('--theme-body-font', theme.bodyFont||theme.font)
   },[theme])
 
   return (

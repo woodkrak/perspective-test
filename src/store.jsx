@@ -7,7 +7,7 @@ const makeBlock = (type, extra={}) => {
   const defaultSlot = (type==='quiz' || type==='answer') ? 2 : 2
   // text/button use slot 2 (dark) for readability; slot 1 is page bg
   // quiz/answer also need slot 2 (was slot 1 bug → invisible on #f0f9ff)
-  return {
+  const base = {
   id: uid(),
   type,
   parentId: null,
@@ -28,8 +28,24 @@ const makeBlock = (type, extra={}) => {
   linking: { mode:'always', always:{ kind:'next' } },
   resultRef: null,
   children: [],
-  ...extra
   }
+  // Priority 1,3,4: answer enrichment
+  if(type==='answer'){
+    base.score = extra.score ?? 0
+    base.tags = extra.tags ?? []
+    base.icon = extra.icon ?? ''
+    base.reportHeadline = extra.reportHeadline ?? ''
+    base.reportBody = extra.reportBody ?? ''
+    base.insightUrl = extra.insightUrl ?? ''
+    base.insightLabel = extra.insightLabel ?? ''
+  }
+  // Priority 3,5: quiz-level display + autoAdvance
+  if(type==='quiz'){
+    base.optionDisplay = extra.optionDisplay ?? 'text'
+    base.autoAdvance = extra.autoAdvance ?? false
+    base.autoAdvanceDelayMs = extra.autoAdvanceDelayMs ?? 600
+  }
+  return { ...base, ...extra }
 }
 
 function defaultContent(type){
@@ -56,13 +72,13 @@ function defaultContent(type){
 }
 
 const THEMES = [
-  { id:'t1', name:'Editorial', font:'Fraunces', colors:['#ffffff','#0f0f0f','#2563eb','#f59e0b'], radius:2, transition:'fade', disableAnimation:false, isSystem:false },
-  { id:'t2', name:'Minimal', font:'Inter', colors:['#fafaf8','#111111','#111111','#e8e6e1'], radius:1, transition:'slide', disableAnimation:false, isSystem:true },
-  { id:'t3', name:'Sunset', font:'Fraunces', colors:['#fff7ed','#7c2d12','#ea580c','#facc15'], radius:3, transition:'scale', disableAnimation:false, isSystem:true },
-  { id:'t4', name:'Ocean', font:'Inter', colors:['#f0f9ff','#0c4a6e','#0284c7','#06b6d4'], radius:2, transition:'fade', disableAnimation:false, isSystem:true },
-  { id:'t5', name:'Party', font:'Fraunces', colors:['#fff1f2','#831843','#ec4899','#8b5cf6'], radius:3, transition:'scale', disableAnimation:false, isSystem:true },
-  { id:'t6', name:'AI — Nebula', font:'JetBrains Mono', colors:['#faf5ff','#2e1065','#7c3aed','#a78bfa'], radius:3, transition:'fade', disableAnimation:false, isSystem:true },
-  { id:'t7', name:'AI — Vector', font:'JetBrains Mono', colors:['#010d03','#00ff41','#22c55e','#86efac'], radius:1, transition:'none', disableAnimation:false, isSystem:true },
+  { id:'t1', name:'Editorial', font:'Fraunces', bodyFont:'Inter', colors:['#ffffff','#0f0f0f','#2563eb','#f59e0b'], radius:2, transition:'fade', disableAnimation:false, isSystem:false },
+  { id:'t2', name:'Minimal', font:'Inter', bodyFont:'Inter', colors:['#fafaf8','#111111','#111111','#e8e6e1'], radius:1, transition:'slide', disableAnimation:false, isSystem:true },
+  { id:'t3', name:'Sunset', font:'Fraunces', bodyFont:'Inter', colors:['#fff7ed','#7c2d12','#ea580c','#facc15'], radius:3, transition:'scale', disableAnimation:false, isSystem:true },
+  { id:'t4', name:'Ocean', font:'Inter', bodyFont:'Inter', colors:['#f0f9ff','#0c4a6e','#0284c7','#06b6d4'], radius:2, transition:'fade', disableAnimation:false, isSystem:true },
+  { id:'t5', name:'Party', font:'Fraunces', bodyFont:'Inter', colors:['#fff1f2','#831843','#ec4899','#8b5cf6'], radius:3, transition:'scale', disableAnimation:false, isSystem:true },
+  { id:'t6', name:'AI — Nebula', font:'JetBrains Mono', bodyFont:'JetBrains Mono', colors:['#faf5ff','#2e1065','#7c3aed','#a78bfa'], radius:3, transition:'fade', disableAnimation:false, isSystem:true },
+  { id:'t7', name:'AI — Vector', font:'JetBrains Mono', bodyFont:'JetBrains Mono', colors:['#010d03','#00ff41','#22c55e','#86efac'], radius:1, transition:'none', disableAnimation:false, isSystem:true },
 ]
 
 function initialFunnel(){
@@ -85,21 +101,27 @@ function initialFunnel(){
   return {
     id:'f1', name:'Growth Assessment Funnel',
     themeId:'t1',
-    settings:{ progressBar:true, cookieBanner:false, socialTitle:'Growth Assessment', socialDesc:'Get your personalized growth plan in 45 seconds.', favicon:'', language:'en', funnelBackground:{kind:'token', slot:0} },
+    settings:{
+      progressBar:true, progressStyle:'bar', cookieBanner:false,
+      socialTitle:'Growth Assessment', socialDesc:'Get your personalized growth plan in 45 seconds.', favicon:'', language:'en', funnelBackground:{kind:'token', slot:0},
+      startCta:'Get my free audit', brandName:'Acme', category:'Growth', subtitle:'Answer 4 quick questions to get your personalized plan',
+      autoAdvance:false, autoAdvanceDelayMs:600,
+      legal:{ bannerText:'', footerDisclaimer:'', privacyUrl:'', termsUrl:'' },
+    },
     pages:[
       { id:'p1', index:1, name:'Welcome', slug:'welcome', confetti:false, blocks:[b1.id,b2.id,b3.id,heroImg.id], background:{kind:'token', slot:1} },
       { id:'p2', index:2, name:'Question 1', slug:'q1', confetti:false, blocks:[b4.id], background:{kind:'token', slot:1} },
       { id:'p3', index:3, name:'Lead capture', slug:'capture', confetti:false, blocks:[formText.id, form.id], background:{kind:'token', slot:1} },
     ],
     results:[
-      { id:'rA', letter:'A', name:'Starter plan' },
-      { id:'rB', letter:'B', name:'Growth plan' },
+      { id:'rA', letter:'A', name:'Starter plan', selectionRules:[] },
+      { id:'rB', letter:'B', name:'Growth plan', selectionRules:[] },
     ],
     messages:[
       { id:'m1', name:'Welcome sequence', status:'offline', sequence:[
         { id:'n1', type:'trigger', label:'Funnel completed' },
-        { id:'n2', type:'delay', label:'Wait 1 hour' },
-        { id:'n3', type:'email', label:'Your plan is ready', from:'hello@perspective.test', to:'Contact', subject:'Your personalized plan', bodyBlocks:[] },
+        { id:'n2', type:'delay', label:'Wait 1 hour', delayMs:3600000 },
+        { id:'n3', type:'email', label:'Your plan is ready', from:'hello@perspective.test', to:'Contact', subject:'Your personalized plan', body:'Hi {{firstName}}, your {{quizName}} result is ready. Score: {{score}} — {{brandName}}', bodyBlocks:[], recipientMode:'lead', staffEmails:'' },
       ]},
     ],
     blocksById: map,
@@ -109,16 +131,96 @@ function initialFunnel(){
 
 function deepClone(o){ return JSON.parse(JSON.stringify(o)) }
 
+// --- Parity helpers: merge tokens, scoring, result selection ---
+export function interpolateTokens(str, ctx={}){
+  if(typeof str!=='string') return str
+  return str.replace(/\{\{\s*(\w+)\s*\}\}/g, (_, k)=>{
+    const map = {
+      firstName: ctx.firstName || ctx.email?.split('@')[0] || 'there',
+      fullName: ctx.fullName || ctx.firstName || '',
+      email: ctx.email || '',
+      brandName: ctx.brandName || '',
+      quizName: ctx.quizName || ctx.funnelName || '',
+      score: String(ctx.score ?? 0),
+      category: ctx.category || '',
+      subtitle: ctx.subtitle || '',
+    }
+    return map[k]!==undefined ? map[k] : `{{${k}}}`
+  })
+}
+
+export function collectScoreAndTags(funnel, answers){
+  let score=0; const tags=new Set()
+  Object.entries(answers||{}).forEach(([trackingId, answerId])=>{
+    // answerId may be the block id for quiz answers
+    const blk = funnel.blocksById[answerId]
+    if(blk && blk.type==='answer'){
+      score += Number(blk.score||0)
+      ;(blk.tags||[]).forEach(t=> { const tt=t.trim(); if(tt) tags.add(tt) })
+    } else {
+      // fallback: if answers stored as trackingId->value string, try lookup by trackingId
+      const maybe = Object.values(funnel.blocksById).find(b=> b.trackingId===trackingId && b.type==='answer' && b.content===answers[trackingId])
+      if(maybe){ score+=Number(maybe.score||0); (maybe.tags||[]).forEach(t=>tags.add(t)) }
+    }
+  })
+  return { score, tags:[...tags] }
+}
+
+export function resolveResultId(funnel, session){
+  const { score, tags } = session
+  // first, check per-result selectionRules (first match wins in result order) — returns null if no rule matches
+  for(const r of funnel.results||[]){
+    const rules = r.selectionRules||[]
+    if(!rules.length) continue
+    for(const rule of rules){
+      const conds = rule.conditions||[]
+      if(!conds.length) continue
+      const ok = conds.every(c=>{
+        const op = c.operator
+        const val = c.value
+        if(op==='score_gte') return score >= Number(val||0)
+        if(op==='score_lte') return score <= Number(val||0)
+        if(op==='score_between'){
+          const [a,b]=String(val).split(',').map(Number)
+          return score >= (a||0) && score <= (b||9999)
+        }
+        if(op==='has_tag') return tags.includes(String(val).trim())
+        if(op==='equals') return String(score)===String(val) || tags.includes(String(val))
+        return false
+      })
+      if(ok) return r.id
+    }
+  }
+  return null
+}
+
 function migratePersisted(saved){
   try{
     // merge new system themes (t5+t6+t7) into existing saves
     if(saved.themes){
       const have = new Set(saved.themes.map(t=>t.id))
       THEMES.forEach(t=>{ if(!have.has(t.id)) saved.themes.push(t) })
+      // P8: backfill bodyFont
+      saved.themes.forEach(t=>{ if(!t.bodyFont) t.bodyFont = t.font })
     }
     // ensure funnelBackground and page backgrounds exist
     if(!saved.settings) saved.settings={}
     if(!saved.settings.funnelBackground) saved.settings.funnelBackground={kind:'token', slot:0}
+    // P5: backfill settings parity defaults
+    if(saved.settings.progressStyle===undefined) saved.settings.progressStyle = saved.settings.progressBar ? 'bar' : 'hidden'
+    if(saved.settings.startCta===undefined) saved.settings.startCta = 'Get my free audit'
+    if(saved.settings.brandName===undefined) saved.settings.brandName = 'Acme'
+    if(saved.settings.category===undefined) saved.settings.category = 'Growth'
+    if(saved.settings.subtitle===undefined) saved.settings.subtitle = ''
+    if(saved.settings.autoAdvance===undefined) saved.settings.autoAdvance = false
+    if(saved.settings.autoAdvanceDelayMs===undefined) saved.settings.autoAdvanceDelayMs = 600
+    if(!saved.settings.legal) saved.settings.legal = { bannerText:'', footerDisclaimer:'', privacyUrl:'', termsUrl:'' }
+    else {
+      if(saved.settings.legal.bannerText===undefined) saved.settings.legal.bannerText=''
+      if(saved.settings.legal.footerDisclaimer===undefined) saved.settings.legal.footerDisclaimer=''
+      if(saved.settings.legal.privacyUrl===undefined) saved.settings.legal.privacyUrl=''
+      if(saved.settings.legal.termsUrl===undefined) saved.settings.legal.termsUrl=''
+    }
     saved.pages?.forEach(p=>{
       if(!p.background) p.background={kind:'token', slot:1}
     })
@@ -142,7 +244,40 @@ function migratePersisted(saved){
         const theme = saved.themes?.find(t=> t.id===saved.themeId)
         if(theme && theme.colors[0]==='#f0f9ff') b.style.color.slot = 2
       }
+      // P1,3,4: backfill answer fields
+      if(b.type==='answer'){
+        if(b.score===undefined) b.score=0
+        if(!Array.isArray(b.tags)) b.tags=[]
+        if(b.icon===undefined) b.icon=''
+        if(b.reportHeadline===undefined) b.reportHeadline=''
+        if(b.reportBody===undefined) b.reportBody=''
+        if(b.insightUrl===undefined) b.insightUrl=''
+        if(b.insightLabel===undefined) b.insightLabel=''
+      }
+      // P3: backfill quiz fields
+      if(b.type==='quiz'){
+        if(!b.optionDisplay) b.optionDisplay='text'
+        if(b.autoAdvance===undefined) b.autoAdvance=false
+        if(b.autoAdvanceDelayMs===undefined) b.autoAdvanceDelayMs=600
+      }
     })
+    // P2: backfill result selectionRules
+    if(saved.results){
+      saved.results.forEach(r=>{ if(!Array.isArray(r.selectionRules)) r.selectionRules=[] })
+    }
+    // P7: backfill messages
+    if(saved.messages){
+      saved.messages.forEach(m=>{
+        ;(m.sequence||[]).forEach(n=>{
+          if(n.type==='delay' && n.delayMs===undefined) n.delayMs=3600000
+          if(n.type==='email'){
+            if(n.body===undefined) n.body=n.bodyBlocks ? '' : 'Hi {{firstName}}, your result is ready.'
+            if(n.recipientMode===undefined) n.recipientMode='lead'
+            if(n.staffEmails===undefined) n.staffEmails=''
+          }
+        })
+      })
+    }
     // ensure p3 has form if empty
     const p3 = saved.pages?.[2]
     if(p3 && (!p3.blocks || p3.blocks.length===0)){
@@ -165,7 +300,7 @@ function funnelReducer(state, action){
       return { ...state, themes: state.themes.map(t=> t.id===action.id ? { ...t, ...action.patch } : t) }
     }
     case 'CREATE_THEME': {
-      const nt = { id:uid(), name:'New theme', font:'Inter', colors:['#ffffff','#111111','#2563eb','#f59e0b'], radius:2, transition:'fade', disableAnimation:false, isSystem:false }
+      const nt = { id:uid(), name:'New theme', font:'Inter', bodyFont:'Inter', colors:['#ffffff','#111111','#2563eb','#f59e0b'], radius:2, transition:'fade', disableAnimation:false, isSystem:false }
       return { ...state, themes:[nt, ...state.themes], themeId: nt.id }
     }
     case 'FORK_THEME': {
@@ -217,10 +352,14 @@ function funnelReducer(state, action){
     }
     case 'ADD_RESULT': {
       const letter = String.fromCharCode(65 + state.results.length)
-      return { ...state, results:[...state.results, { id:uid(), letter, name:`Result ${letter}` }] }
+      return { ...state, results:[...state.results, { id:uid(), letter, name:`Result ${letter}`, selectionRules:[] }] }
     }
     case 'DELETE_RESULT': {
       return { ...state, results: state.results.filter(r=>r.id!==action.id) }
+    }
+    case 'UPDATE_RESULT': {
+      const r = state.results.find(x=>x.id===action.id); if(!r) return state
+      return { ...state, results: state.results.map(x=> x.id===action.id ? { ...x, ...action.patch } : x) }
     }
     case 'ADD_BLOCK': {
       const { pageId, block, afterId } = action
@@ -310,6 +449,15 @@ function funnelReducer(state, action){
     case 'UPDATE_FUNNEL_BACKGROUND': {
       return { ...state, settings:{ ...state.settings, funnelBackground: action.background } }
     }
+    case 'UPDATE_SETTINGS': {
+      return { ...state, settings:{ ...state.settings, ...action.patch } }
+    }
+    case 'UPDATE_LEGAL': {
+      return { ...state, settings:{ ...state.settings, legal:{ ...state.settings.legal, ...action.patch } } }
+    }
+    case 'UPDATE_MESSAGE_SEQUENCE': {
+      return { ...state, messages: state.messages.map(m=> m.id===action.messageId ? { ...m, sequence: action.sequence } : m) }
+    }
     default: return state
   }
 }
@@ -382,7 +530,7 @@ export function FunnelProvider({ children }){
   },[selectedPageId, selectedBlockId])
 
   const dispatchWithHistory = useCallback((action)=>{
-    const historyActions = new Set(['UPDATE_BLOCK','UPDATE_BLOCK_CONTENT','UPDATE_BLOCK_STYLE','ADD_BLOCK','DELETE_BLOCK','DUPLICATE_BLOCK','MOVE_BLOCK','ADD_PAGE','DELETE_PAGE','RENAME_PAGE','ADD_RESULT','DELETE_RESULT','UPDATE_THEME','CREATE_THEME','FORK_THEME','DELETE_THEME','SET_FUNNEL_NAME','SET_THEME','UPSERT_BLOCKS','UPDATE_PAGE_BACKGROUND','UPDATE_FUNNEL_BACKGROUND'])
+    const historyActions = new Set(['UPDATE_BLOCK','UPDATE_BLOCK_CONTENT','UPDATE_BLOCK_STYLE','ADD_BLOCK','DELETE_BLOCK','DUPLICATE_BLOCK','MOVE_BLOCK','ADD_PAGE','DELETE_PAGE','RENAME_PAGE','ADD_RESULT','DELETE_RESULT','UPDATE_RESULT','UPDATE_THEME','CREATE_THEME','FORK_THEME','DELETE_THEME','SET_FUNNEL_NAME','SET_THEME','UPSERT_BLOCKS','UPDATE_PAGE_BACKGROUND','UPDATE_FUNNEL_BACKGROUND','UPDATE_SETTINGS','UPDATE_LEGAL','UPDATE_MESSAGE_SEQUENCE'])
     if(historyActions.has(action.type) && !skipHistoryRef.current){
       setPast({ type:'PUSH', snapshot: deepClone(funnel) })
       setFuture({ type:'CLEAR' })
