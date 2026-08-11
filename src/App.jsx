@@ -280,10 +280,12 @@ function PreviewModal({ onClose }){
                     const icon = ans?.icon
                     const showIcon = display==='icon' && icon
                     const showImg = display==='image'
-                    return <button key={cid} className={`answer-card ${answers[q.trackingId]===cid?'selected':''}`} onClick={()=> handlePick(cid)} style={{textAlign:'left', display:'flex',gap:8,alignItems:'center'}}>
-                      {showIcon ? <span style={{width:36,height:36,borderRadius:8,background:'#f2f0ed',flexShrink:0,display:'grid',placeItems:'center'}}>{icon.startsWith('lucide:') ? <LucideIcon name={icon} size={18}/> : <span style={{fontSize:18}}>{icon}</span>}</span>
-                       : showImg ? <span style={{width:36,height:36,borderRadius:8,background:'#f2f0ed',overflow:'hidden',flexShrink:0,display:'grid',placeItems:'center'}}><img src={`https://picsum.photos/seed/${cid}/80/80`} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/></span>
-                       : <span style={{width:36,height:36,borderRadius:8,background:'#f2f0ed',overflow:'hidden',flexShrink:0,display:'grid',placeItems:'center'}}><img src={`https://picsum.photos/seed/${cid}/80/80`} alt="" style={{width:'100%',height:'100%',objectFit:'cover',opacity: showIcon||showImg?1:0.3}}/></span>}
+                    const isSel = answers[q.trackingId]===cid
+                    const acc = theme.colors[2]
+                    return <button key={cid} className={`answer-card ${isSel?'selected':''}`} onClick={()=> handlePick(cid)} style={{textAlign:'left', display:'flex',gap:8,alignItems:'center', ...(isSel?{borderColor:acc, background:`${acc}14`}:{})}}>
+                      {showIcon ? <span style={{width:44,height:44,borderRadius:12,background:isSel?`${acc}14`:'#f5f4f1',border:`1px solid ${isSel?acc+'30':'rgba(0,0,0,.06)'}`,flexShrink:0,display:'grid',placeItems:'center'}}>{icon.startsWith('lucide:') ? <LucideIcon name={icon} size={20}/> : <span style={{fontSize:20}}>{icon}</span>}</span>
+                       : showImg ? <span style={{width:56,height:56,borderRadius:12,background:'#f5f4f1',overflow:'hidden',flexShrink:0,display:'grid',placeItems:'center'}}><img src={`https://picsum.photos/seed/${cid}/80/80`} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/></span>
+                       : <span style={{width:8,height:8,borderRadius:99,background:isSel?acc:'#e8e6e1',flexShrink:0,marginLeft:4}}/>}
                       <span style={{flex:1,fontFamily: theme.bodyFont||theme.font}}>{interpolateTokens(ans?.content||'', ctx)}</span>
                     </button>
                   })}
@@ -1971,6 +1973,8 @@ function BlockRenderer({ blockId, depth=0, onSelect }){
             const icon = ans.icon||''
             const showIcon = display==='icon' && !!icon
             const showImg = display==='image'
+            const accent = theme.colors[2]
+            const accentTint = accent ? `${accent}14` : '#f5f4f1'
             return (
               <div key={cid}
                 className={`answer-card ${isAnsSelected?'selected':''}`}
@@ -1986,14 +1990,14 @@ function BlockRenderer({ blockId, depth=0, onSelect }){
                     setSelectedBlockId(cid)
                   }
                 }}
-                style={{borderRadius: radius-4, position:'relative', cursor:'pointer', userSelect: isEditingAns?'text':'none'}}
+                style={{borderRadius: radius-4, position:'relative', cursor:'pointer', userSelect: isEditingAns?'text':'none', ...(isAnsSelected ? {borderColor: accent, background: accentTint} : {})}}
               >
                 {showIcon ? (
-                  <span style={{width:36,height:36,borderRadius:8,background:'#f2f0ed',flexShrink:0,display:'grid',placeItems:'center',pointerEvents:'none'}}>{icon.startsWith('lucide:') ? <LucideIcon name={icon} size={18}/> : <span style={{fontSize:18}}>{icon}</span>}</span>
+                  <span style={{width:44,height:44,borderRadius:12,background:isAnsSelected? `${accent}14` : '#f5f4f1', border:`1px solid ${isAnsSelected? accent+'30' : 'rgba(0,0,0,.06)'}`,flexShrink:0,display:'grid',placeItems:'center',pointerEvents:'none'}}>{icon.startsWith('lucide:') ? <LucideIcon name={icon} size={20}/> : <span style={{fontSize:20}}>{icon}</span>}</span>
                 ) : showImg ? (
-                  <div className="answer-thumb" style={{pointerEvents:'none'}}><img src={`https://picsum.photos/seed/${cid}/80/80`} alt="" style={{pointerEvents:'none'}}/></div>
+                  <div className="answer-thumb" style={{pointerEvents:'none', width:56, height:56, borderRadius:12}}><img src={`https://picsum.photos/seed/${cid}/80/80`} alt="" style={{pointerEvents:'none'}}/></div>
                 ) : (
-                  <div className="answer-thumb" style={{pointerEvents:'none',opacity: ans.icon?0.4:1}}><img src={`https://picsum.photos/seed/${cid}/80/80`} alt="" style={{pointerEvents:'none'}}/></div>
+                  <div style={{width:8,height:8,borderRadius:99,background:isAnsSelected?accent:'#e8e6e1',flexShrink:0,marginLeft:4}}/>
                 )}
                 <div
                   data-answer-id={cid}
