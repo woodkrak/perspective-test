@@ -2138,7 +2138,7 @@ function Canvas({ previewBlock, setPreviewBlock, previewBlocks, setPreviewBlocks
     <div ref={wrapRef} className={`canvas-wrap ${device==='desktop'?'device-desktop':''}`} onClick={()=>setSelectedBlockId(null)} style={{...wrapBgStyle, overflow:'auto', display:'flex', justifyContent:'center', alignItems:'flex-start', padding:24}}>
       <div onClick={e=>e.stopPropagation()} style={{ width: outerW, height: outerH, transform:`scale(${scale})`, transformOrigin:'top center', transition:'all .32s cubic-bezier(.2,.8,.2,1)', filter:'drop-shadow(0 20px 48px rgba(0,0,0,.18))', flexShrink:0}}>
         <div style={{ background: device==='desktop' ? '#fff' : '#0a0a0a', borderRadius: radius, padding: pad, boxSizing:'content-box', width: w, height: h, border: device==='desktop' ? '1px solid #d6d2cc' : 'none', overflow:'hidden'}}>
-          <div style={{ width: w, height: h, ...pageBgInner, borderRadius: Math.max(0, radius - pad), overflow:'hidden', position:'relative', display:'flex', flexDirection:'column', fontFamily: theme.font }}>
+          <div key={page?.id} className={(!theme.disableAnimation && theme.transition && theme.transition!=='none') ? `page-anim pt-${theme.transition}` : ''} style={{ width: w, height: h, ...pageBgInner, borderRadius: Math.max(0, radius - pad), overflow:'hidden', position:'relative', display:'flex', flexDirection:'column', fontFamily: theme.font, ...((!theme.disableAnimation && theme.transition && theme.transition!=='none') ? {animationDuration: `${theme.transitionDuration ?? 380}ms`} : {}) }}>
             {device==='mobile' && (
               <>
                 <div style={{position:'absolute',top:0,left:'50%',transform:'translateX(-50%)',width:90,height:22,background:'#0a0a0a',borderRadius:'0 0 14px 14px',zIndex:2}}/>
@@ -2162,7 +2162,7 @@ function Canvas({ previewBlock, setPreviewBlock, previewBlocks, setPreviewBlocks
             {funnel.settings.legal?.bannerText && (
               <div style={{background: theme.colors[2], color:'#fff', textAlign:'center', padding:'6px 10px', fontSize:11, fontWeight:600, flexShrink:0}}>{funnel.settings.legal.bannerText}</div>
             )}
-            <div key={page?.id} className={`canvas-inner ${(!theme.disableAnimation && theme.transition && theme.transition!=='none') ? `page-anim pt-${theme.transition}` : ''}`} onDragOver={e=>e.preventDefault()} style={{flex:1, overflowY:'auto', padding: device==='mobile' ? '12px 16px 18px' : device==='tablet' ? '18px' : '20px', display:'flex', flexDirection:'column', gap:0, ...((!theme.disableAnimation && theme.transition && theme.transition!=='none') ? {animationDuration: `${theme.transitionDuration ?? 380}ms`} : {})}}>
+            <div className="canvas-inner" onDragOver={e=>e.preventDefault()} style={{flex:1, overflowY:'auto', padding: device==='mobile' ? '12px 16px 18px' : device==='tablet' ? '18px' : '20px', display:'flex', flexDirection:'column', gap:0}}>
               {device==='mobile' && <div style={{width:36,height:4,background:'#e8e6e1',borderRadius:99,margin:'0 auto 10px', flexShrink:0}}/>}
           {(page?.blocks||[]).map((bid, idx)=>(
             <div key={bid} data-block-id={bid}

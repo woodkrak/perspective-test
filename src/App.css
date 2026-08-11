@@ -204,15 +204,15 @@
 .rules-builder{border:1px solid var(--line);border-radius:12px;padding:10px;background:#fcfcfa;display:flex;flex-direction:column;gap:12px}
 .rule-card{border:1px solid var(--line);border-radius:10px;padding:10px;background:#fff;display:flex;flex-direction:column;gap:8px}
 
-/* page transitions — builder canvas + preview — prominent, not subtle */
-.page-anim{animation-duration:380ms; animation-timing-function:cubic-bezier(.16,.84,.22,1); animation-fill-mode:both; will-change:transform,opacity}
+/* page transitions — distinct + duration-sensitive; whole page including bg animates */
+.page-anim{animation-duration:380ms; animation-timing-function:cubic-bezier(.22,.61,.36,1); animation-fill-mode:both; will-change:transform,opacity}
 .pt-fade{animation-name:pt-fade}
 .pt-slide{animation-name:pt-slide}
 .pt-slide-up{animation-name:pt-slide-up}
 .pt-scale{animation-name:pt-scale}
 .pt-flip{animation-name:pt-flip; transform-origin:center}
 @keyframes pt-fade{from{opacity:0} to{opacity:1}}
-@keyframes pt-slide{from{opacity:0; transform:translateX(28px)} to{opacity:1; transform:translateX(0)}}
-@keyframes pt-slide-up{from{opacity:0; transform:translateY(20px)} to{opacity:1; transform:translateY(0)}}
-@keyframes pt-scale{from{opacity:0; transform:scale(.94)} to{opacity:1; transform:scale(1)}}
-@keyframes pt-flip{from{opacity:0; transform:perspective(800px) rotateY(-12deg) translateX(16px)} to{opacity:1; transform:perspective(800px) rotateY(0) translateX(0)}}
+@keyframes pt-slide{from{opacity:0; transform:translateX(64px)} to{opacity:1; transform:translateX(0)}}
+@keyframes pt-slide-up{from{opacity:0; transform:translateY(48px)} to{opacity:1; transform:translateY(0)}}
+@keyframes pt-scale{from{opacity:0; transform:scale(.82)} to{opacity:1; transform:scale(1)}}
+@keyframes pt-flip{from{opacity:0; transform:perspective(1000px) rotateY(-16deg) translateX(28px)} to{opacity:1; transform:perspective(1000px) rotateY(0) translateX(0)}}
