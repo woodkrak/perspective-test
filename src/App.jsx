@@ -243,9 +243,10 @@ function PreviewModal({ onClose }){
       </div>
     )
   }
+  const animClass = (!theme.disableAnimation && theme.transition && theme.transition!=='none') ? `page-anim pt-${theme.transition}` : ''
   const PreviewContent = (
     <>
-      <div style={{display:'flex',flexDirection:'column',gap:10,marginTop:4}}>
+      <div key={page?.id} className={animClass} style={{display:'flex',flexDirection:'column',gap:10,marginTop:4}}>
         {(page?.blocks||[]).map(bid=>{
           const b = funnel.blocksById[bid]; if(!b) return null
           const ctx = { brandName: funnel.settings.brandName, quizName: funnel.name, funnelName: funnel.name, score: collectScoreAndTags(funnel, answers).score, firstName:'there', email:'' }
@@ -856,8 +857,9 @@ function LeftRail({ onRequestAdd }){
             <div className="control-row">
               <div className="control-label">Page transition</div>
               <select className="select" value={t.transition} onChange={e=>dispatch({type:'UPDATE_THEME', id:t.id, patch:{transition:e.target.value}})}>
-                <option value="none">None</option><option value="fade">Fade</option><option value="slide">Slide</option><option value="scale">Scale</option>
+                <option value="none">None</option><option value="fade">Fade</option><option value="slide">Slide</option><option value="slide-up">Slide Up</option><option value="scale">Scale</option><option value="flip">Flip</option>
               </select>
+              <div style={{fontSize:11,color:'var(--muted)'}}>Animates how pages arrive/leave in builder + Preview</div>
             </div>
             <label className="row" style={{gap:10, fontSize:13, fontWeight:500}}>
               <span className={`toggle ${t.disableAnimation?'on':''}`} onClick={()=>dispatch({type:'UPDATE_THEME', id:t.id, patch:{disableAnimation:!t.disableAnimation}})}><i/></span>
@@ -2153,6 +2155,7 @@ function Canvas({ previewBlock, setPreviewBlock, previewBlocks, setPreviewBlocks
             )}
             <div className="canvas-inner" onDragOver={e=>e.preventDefault()} style={{flex:1, overflowY:'auto', padding: device==='mobile' ? '12px 16px 18px' : device==='tablet' ? '18px' : '20px', display:'flex', flexDirection:'column', gap:0}}>
               {device==='mobile' && <div style={{width:36,height:4,background:'#e8e6e1',borderRadius:99,margin:'0 auto 10px', flexShrink:0}}/>}
+              <div key={page?.id} className={(!theme.disableAnimation && theme.transition && theme.transition!=='none') ? `page-anim pt-${theme.transition}` : ''} style={{display:'flex',flexDirection:'column',gap:0}}>
           {(page?.blocks||[]).map((bid, idx)=>(
             <div key={bid} data-block-id={bid}
               onDragOver={e=>{ e.preventDefault(); setDragOverIdx(idx)}}
@@ -2295,6 +2298,7 @@ function Canvas({ previewBlock, setPreviewBlock, previewBlocks, setPreviewBlocks
             }
             window.dispatchEvent(new CustomEvent('open-library'))
           }}>+</button>
+              </div>
           {funnel.settings.legal?.footerDisclaimer && (
             <div style={{marginTop:16,padding:'10px 12px',background:'#f5f4f1',border:'1px solid var(--line)',borderRadius:8,fontSize:11,color:'var(--muted)',textAlign:'center'}}>{funnel.settings.legal.footerDisclaimer} {funnel.settings.legal?.privacyUrl && <><a href={funnel.settings.legal.privacyUrl} target="_blank" rel="noreferrer" style={{color:theme.colors[2],fontWeight:600}}>Privacy</a> </>}{funnel.settings.legal?.termsUrl && <a href={funnel.settings.legal.termsUrl} target="_blank" rel="noreferrer" style={{color:theme.colors[2],fontWeight:600}}>Terms</a>}</div>
           )}
