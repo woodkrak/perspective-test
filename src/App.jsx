@@ -330,17 +330,48 @@ function PreviewModal({ onClose }){
                 }, delay)
               }
             }
+            const isCard = display==='card-photo' || display==='card-icon'
+            const cardBg = resolveColor(b.cardColor || {kind:'token', slot:3}, theme) || theme.colors[2]
+            const cardTextColor = resolveColor(b.cardTextColor || {kind:'solid', hex:'#fff'}, theme) || '#fff'
+            const cardFont = b.cardTextFont || theme.font
+            const handlePickMulti = (cid)=>{
+              if(b.multiSelect){
+                const cur = answers[b.trackingId]
+                const arr = Array.isArray(cur) ? cur.slice() : (cur ? [cur] : [])
+                const next = arr.includes(cid) ? arr.filter(x=>x!==cid) : [...arr, cid]
+                setAnswers(a=> ({...a, [b.trackingId]: next}))
+                return
+              }
+              handlePick(cid)
+            }
+            const isSelected = (cid)=> {
+              const cur = answers[b.trackingId]
+              if(b.multiSelect) return Array.isArray(cur) && cur.includes(cid)
+              return cur===cid
+            }
             return (
               <div key={bid} className="quiz-wrap">
                 <div style={{fontFamily: theme.font, fontWeight:700,marginBottom:10, fontSize: Math.round(((typeof q.style?.size==='number'?q.style.size:22))* (device==='mobile'?1:device==='tablet'?1.32:1.48))}} dangerouslySetInnerHTML={{__html: interpolateTokens(q.content?.question||'', ctx)}} />
-                <div className="quiz-grid" style={{gridTemplateColumns: device==='mobile'?'1fr':'1fr 1fr'}}>
+                <div className={`quiz-grid ${isCard ? 'cards' : ''}`} style={!isCard ? {gridTemplateColumns: device==='mobile'?'1fr':'1fr 1fr'} : undefined}>
                   {(q.children||[]).map(cid=>{
                     const ans = funnel.blocksById[cid]
                     const icon = ans?.icon
                     const showIcon = display==='icon' && icon
                     const showImg = display==='image'
-                    const isSel = answers[q.trackingId]===cid
+                    const isSel = isSelected(cid)
                     const acc = theme.colors[2]
+                    if(isCard){
+                      const isPhoto = display==='card-photo'
+                      return (
+                        <button key={cid} className={`answer-card ${isSel?'selected':''}`} onClick={()=> handlePickMulti(cid)} style={{padding:0, overflow:'hidden', ...(isSel?{outline:`2px solid ${acc}`, outlineOffset:0}:{})}}>
+                          <div className="card-media" style={{background: isPhoto ? '#f5f4f1' : '#fcfcfa'}}>
+                            {isPhoto ? <img src={`https://picsum.photos/seed/${cid}/400/300`} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}} />
+                            : <span style={{fontSize:32, padding:20}}>{icon.startsWith('lucide:') ? <LucideIcon name={icon} size={36}/> : <span style={{fontSize:32}}>{icon || '◆'}</span>}</span>}
+                          </div>
+                          <div className="card-foot" style={{background: cardBg, color: cardTextColor, fontFamily: cardFont, fontSize: b.cardTextSize || 14}}>{interpolateTokens(ans?.content||'', ctx)}</div>
+                        </button>
+                      )
+                    }
                     return <button key={cid} className={`answer-card ${isSel?'selected':''}`} onClick={()=> handlePick(cid)} style={{textAlign:'left', display:'flex',gap:8,alignItems:'center', ...(isSel?{borderColor:acc, background:`${acc}14`}:{})}}>
                       {showIcon ? <span style={{width:44,height:44,borderRadius:12,background:isSel?`${acc}14`:'#f5f4f1',border:`1px solid ${isSel?acc+'30':'rgba(0,0,0,.06)'}`,flexShrink:0,display:'grid',placeItems:'center'}}>{icon.startsWith('lucide:') ? <LucideIcon name={icon} size={20}/> : <span style={{fontSize:20}}>{icon}</span>}</span>
                        : showImg ? <span style={{width:56,height:56,borderRadius:12,background:'#f5f4f1',overflow:'hidden',flexShrink:0,display:'grid',placeItems:'center'}}><img src={`https://picsum.photos/seed/${cid}/80/80`} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/></span>
@@ -349,7 +380,8 @@ function PreviewModal({ onClose }){
                     </button>
                   })}
                 </div>
-                {q.autoAdvance && <div style={{fontSize:11,color:'var(--faint)',marginTop:6}}>Auto-advances in {q.autoAdvanceDelayMs}ms — toggle off in quiz settings</div>}
+                {b.multiSelect && <div style={{fontSize:12,color:'var(--muted)',marginTop:8}}>Select one or more — then Continue</div>}
+                {!b.multiSelect && q.autoAdvance && <div style={{fontSize:11,color:'var(--faint)',marginTop:6}}>Auto-advances in {q.autoAdvanceDelayMs}ms — toggle off in quiz settings</div>}
               </div>
             )
           }
@@ -389,7 +421,7 @@ function PreviewModal({ onClose }){
       {(()=>{
         const blocksForNav = (page?.blocks||[]).map(id=> funnel.blocksById[id]).filter(Boolean)
         const quizForNav = blocksForNav.find(b=> b.type==='quiz')
-        const isAutoPage = quizForNav ? ((quizForNav.children||[]).length===1 ? true : (quizForNav.autoAdvance ?? funnel.settings.autoAdvance)) : false
+        const isAutoPage = quizForNav ? (!quizForNav.multiSelect && ((quizForNav.children||[]).length===1 ? true : (quizForNav.autoAdvance ?? funnel.settings.autoAdvance))) : false
         if(isAutoPage) return null
         return (
           <div style={{display:'flex',gap:8,marginTop:12}}>
@@ -1338,17 +1370,54 @@ function PropertyPanel({ block, theme, funnel }){
           </label>
           <div className="control-row">
             <div className="control-label">Display mode</div>
-            <div className="seg" style={{display:'flex',gap:4}}>
+            <div className="seg" style={{display:'flex',gap:4,flexWrap:'wrap'}}>
               {[
                 ['text','Text'],
                 ['icon','Icon + text'],
                 ['image','Image + text'],
+                ['card-photo','Card · Photo'],
+                ['card-icon','Card · Icon'],
               ].map(([id,label])=> (
-                <button key={id} className={block.optionDisplay===id?'active':''} onClick={()=>dispatch({type:'UPDATE_BLOCK', id:block.id, patch:{optionDisplay:id}})} style={{flex:1,padding:'6px 8px',borderRadius:8,border:'1px solid var(--line)',background: block.optionDisplay===id?'#111':'#fff',color: block.optionDisplay===id?'#fff':'var(--muted)',fontWeight:600,fontSize:12,cursor:'pointer'}}>{label}</button>
+                <button key={id} className={block.optionDisplay===id?'active':''} onClick={()=>dispatch({type:'UPDATE_BLOCK', id:block.id, patch:{optionDisplay:id}})} style={{flex:'1 1 88px',padding:'6px 8px',borderRadius:8,border:'1px solid var(--line)',background: block.optionDisplay===id?'#111':'#fff',color: block.optionDisplay===id?'#fff':'var(--muted)',fontWeight:600,fontSize:12,cursor:'pointer'}}>{label}</button>
               ))}
             </div>
-            <div style={{fontSize:11,color:'var(--faint)'}}>Set once per quiz — controls how each answer renders</div>
+            <div style={{fontSize:11,color:'var(--faint)'}}>Cards: bottom 28% solid color + photo/icon top, hover zoom, shadow, centered odd on wide screens</div>
           </div>
+          {(block.optionDisplay==='card-photo' || block.optionDisplay==='card-icon') && (
+            <>
+              <div className="control-row" style={{background:'#fafaf8',border:'1px solid var(--line)',borderRadius:10,padding:10}}>
+                <div className="control-label">Cards — appearance</div>
+                <div style={{display:'flex',gap:8,alignItems:'center'}}>
+                  <span style={{fontSize:11,color:'var(--muted)'}}>Bottom color</span>
+                  <ColorPicker value={block.cardColor} onChange={v=>dispatch({type:'UPDATE_BLOCK', id:block.id, patch:{cardColor:v}})} themeColors={theme.colors} />
+                </div>
+                <div style={{display:'flex',gap:8,alignItems:'center',marginTop:8}}>
+                  <span style={{fontSize:11,color:'var(--muted)'}}>Text color</span>
+                  <ColorPicker value={block.cardTextColor} onChange={v=>dispatch({type:'UPDATE_BLOCK', id:block.id, patch:{cardTextColor:v}})} themeColors={theme.colors} />
+                </div>
+                <div style={{display:'flex',gap:8,alignItems:'center',marginTop:8}}>
+                  <span style={{fontSize:11,color:'var(--muted)'}}>Text size</span>
+                  <input className="slider" type="range" min={11} max={18} step={1} value={block.cardTextSize ?? 14} onChange={e=>dispatch({type:'UPDATE_BLOCK', id:block.id, patch:{cardTextSize: Number(e.target.value)}})} style={{flex:1}} />
+                  <span style={{fontSize:12,fontWeight:600,minWidth:28,textAlign:'right'}}>{block.cardTextSize ?? 14}</span>
+                </div>
+                <div style={{display:'flex',gap:8,alignItems:'center',marginTop:6}}>
+                  <span style={{fontSize:11,color:'var(--muted)'}}>Font</span>
+                  <select className="select" value={block.cardTextFont || ''} onChange={e=>dispatch({type:'UPDATE_BLOCK', id:block.id, patch:{cardTextFont: e.target.value}})} style={{flex:1}}>
+                    <option value="">Theme default</option><option>Fraunces</option><option>Inter</option><option>JetBrains Mono</option>
+                  </select>
+                </div>
+                <div style={{fontSize:11,color:'var(--faint)',marginTop:4}}>Bottom ~28% of card is solid; top is photo or centered icon. Hover zooms card slightly.</div>
+              </div>
+              <div className="control-row">
+                <div className="control-label">Selection</div>
+                <label className="row" style={{fontSize:12,gap:8}}>
+                  <span className={`toggle ${block.multiSelect?'on':''}`} onClick={()=>dispatch({type:'UPDATE_BLOCK', id:block.id, patch:{multiSelect: !block.multiSelect}})}><i/></span>
+                  Allow multiple answers
+                </label>
+                <div style={{fontSize:11,color:'var(--faint)'}}>When on, user can pick 2-5 cards and Continue appears; when off, single pick auto-advances if enabled.</div>
+              </div>
+            </>
+          )}
           <div className="control-row">
             <div className="control-label">Behavior</div>
             <label className="row" style={{fontSize:12,gap:8}}>
@@ -2023,7 +2092,7 @@ function BlockRenderer({ blockId, depth=0, onSelect }){
           />
           {editing && <InlineToolbar targetRef={ref} />}
         </div>
-        <div className="quiz-grid">
+        <div className={`quiz-grid ${block.optionDisplay==='card-photo' || block.optionDisplay==='card-icon' ? 'cards' : ''}`}>
           {(block.children||[]).map(cid=>{
             const ans = funnel.blocksById[cid]
             if(!ans) return null
@@ -2033,8 +2102,30 @@ function BlockRenderer({ blockId, depth=0, onSelect }){
             const icon = ans.icon||''
             const showIcon = display==='icon' && !!icon
             const showImg = display==='image'
+            const isCard = display==='card-photo' || display==='card-icon'
             const accent = theme.colors[2]
             const accentTint = accent ? `${accent}14` : '#f5f4f1'
+            const cardBg = resolveColor(block.cardColor || {kind:'token', slot:3}, theme) || accent
+            const cardTextColor = resolveColor(block.cardTextColor || {kind:'solid', hex:'#fff'}, theme) || '#fff'
+            const cardFont = block.cardTextFont || headlineFont
+            if(isCard){
+              const isPhoto = display==='card-photo'
+              return (
+                <div key={cid}
+                  className={`answer-card ${isAnsSelected?'selected':''}`}
+                  onClick={(e)=>{ e.stopPropagation(); if(isAnsSelected){ setEditingAnswerId(cid); setTimeout(()=>{ const el=document.querySelector(`[data-answer-id="${cid}"]`); if(el){ el.focus(); const r=document.createRange(); r.selectNodeContents(el); const s=window.getSelection(); s.removeAllRanges(); s.addRange(r) } },0)} else setSelectedBlockId(cid) }}
+                  style={{borderRadius:12, overflow:'hidden', ...(isAnsSelected ? {outline:`2px solid ${accent}`, outlineOffset:0} : {})}}
+                >
+                  <div className="card-media" style={{background: isPhoto ? '#f5f4f1' : '#fcfcfa'}}>
+                    {isPhoto ? <img src={`https://picsum.photos/seed/${cid}/400/300`} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}} />
+                    : <span style={{fontSize:32, padding:16}}>{icon.startsWith('lucide:') ? <LucideIcon name={icon} size={36}/> : <span style={{fontSize:32}}>{icon || '◆'}</span>}</span>}
+                  </div>
+                  <div className="card-foot" style={{background: cardBg, color: cardTextColor, fontFamily: cardFont, fontSize: block.cardTextSize || 14}}>
+                    <div data-answer-id={cid} contentEditable={isEditingAns} suppressContentEditableWarning onBlur={e=>{ const html=e.currentTarget.innerHTML; dispatch({type:'UPDATE_BLOCK_CONTENT', id:cid, content: html})}} style={{outline:'none'}} dangerouslySetInnerHTML={{__html: ans.content}} />
+                  </div>
+                </div>
+              )
+            }
             return (
               <div key={cid}
                 className={`answer-card ${isAnsSelected?'selected':''}`}

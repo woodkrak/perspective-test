@@ -39,11 +39,16 @@ const makeBlock = (type, extra={}) => {
     base.insightUrl = extra.insightUrl ?? ''
     base.insightLabel = extra.insightLabel ?? ''
   }
-  // Priority 3,5: quiz-level display + autoAdvance
+  // Priority 3,5: quiz-level display + autoAdvance + cards
   if(type==='quiz'){
     base.optionDisplay = extra.optionDisplay ?? 'text'
     base.autoAdvance = extra.autoAdvance ?? false
     base.autoAdvanceDelayMs = extra.autoAdvanceDelayMs ?? 600
+    base.multiSelect = extra.multiSelect ?? false
+    base.cardColor = extra.cardColor ?? {kind:'token', slot:3}
+    base.cardTextColor = extra.cardTextColor ?? {kind:'solid', hex:'#ffffff'}
+    base.cardTextSize = extra.cardTextSize ?? 14
+    base.cardTextFont = extra.cardTextFont ?? ''
   }
   if(type==='image'){
     base.dropShadow = extra.dropShadow ?? true
@@ -158,6 +163,10 @@ export function createRobustDemoFunnel(){
       optionDisplay: cfg.optionDisplay ?? 'text',
       autoAdvance: cfg.autoAdvance ?? false,
       autoAdvanceDelayMs: cfg.autoAdvanceDelayMs ?? 600,
+      multiSelect: cfg.multiSelect ?? false,
+      cardColor: cfg.cardColor ?? {kind:'token', slot:3},
+      cardTextColor: cfg.cardTextColor ?? {kind:'solid', hex:'#ffffff'},
+      cardTextSize: cfg.cardTextSize ?? 14,
       children: answers.map(a=>a.id)
     })
     answers.forEach(a=> a.parentId = q.id)
@@ -344,16 +353,21 @@ export function interpolateTokens(str, ctx={}){
 export function collectScoreAndTags(funnel, answers){
   let score=0; const tags=new Set()
   Object.entries(answers||{}).forEach(([trackingId, answerId])=>{
-    // answerId may be the block id for quiz answers
-    const blk = funnel.blocksById[answerId]
-    if(blk && blk.type==='answer'){
-      score += Number(blk.score||0)
-      ;(blk.tags||[]).forEach(t=> { const tt=t.trim(); if(tt) tags.add(tt) })
-    } else {
-      // fallback: if answers stored as trackingId->value string, try lookup by trackingId
-      const maybe = Object.values(funnel.blocksById).find(b=> b.trackingId===trackingId && b.type==='answer' && b.content===answers[trackingId])
-      if(maybe){ score+=Number(maybe.score||0); (maybe.tags||[]).forEach(t=>tags.add(t)) }
-    }
+    const ids = Array.isArray(answerId) ? answerId : [answerId]
+    for(const aid of ids){
+      // answerId may be the block id for quiz answers
+      const blk = funnel.blocksById[aid]
+      if(blk && blk.type==='answer'){
+        score += Number(blk.score||0)
+        ;(blk.tags||[]).forEach(t=> { const tt=t.trim(); if(tt) tags.add(tt) })
+        continue
+      }
+      if(!Array.isArray(answerId)){
+        // fallback: if answers stored as trackingId->value string, try lookup by trackingId
+        const maybe = Object.values(funnel.blocksById).find(b=> b.trackingId===trackingId && b.type==='answer' && b.content===answers[trackingId])
+        if(maybe){ score+=Number(maybe.score||0); (maybe.tags||[]).forEach(t=>tags.add(t)) }
+      }
+      }
   })
   return { score, tags:[...tags] }
 }
@@ -455,6 +469,11 @@ function migratePersisted(saved){
         if(!b.optionDisplay) b.optionDisplay='text'
         if(b.autoAdvance===undefined) b.autoAdvance=false
         if(b.autoAdvanceDelayMs===undefined) b.autoAdvanceDelayMs=600
+        if(b.multiSelect===undefined) b.multiSelect=false
+        if(!b.cardColor) b.cardColor={kind:'token', slot:3}
+        if(!b.cardTextColor) b.cardTextColor={kind:'solid', hex:'#ffffff'}
+        if(b.cardTextSize===undefined) b.cardTextSize=14
+        if(b.cardTextFont===undefined) b.cardTextFont=''
       }
       if(b.type==='image'){
         if(b.dropShadow===undefined) b.dropShadow = true
