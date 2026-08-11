@@ -2153,9 +2153,8 @@ function Canvas({ previewBlock, setPreviewBlock, previewBlocks, setPreviewBlocks
             {funnel.settings.legal?.bannerText && (
               <div style={{background: theme.colors[2], color:'#fff', textAlign:'center', padding:'6px 10px', fontSize:11, fontWeight:600, flexShrink:0}}>{funnel.settings.legal.bannerText}</div>
             )}
-            <div className="canvas-inner" onDragOver={e=>e.preventDefault()} style={{flex:1, overflowY:'auto', padding: device==='mobile' ? '12px 16px 18px' : device==='tablet' ? '18px' : '20px', display:'flex', flexDirection:'column', gap:0}}>
+            <div key={page?.id} className={`canvas-inner ${(!theme.disableAnimation && theme.transition && theme.transition!=='none') ? `page-anim pt-${theme.transition}` : ''}`} onDragOver={e=>e.preventDefault()} style={{flex:1, overflowY:'auto', padding: device==='mobile' ? '12px 16px 18px' : device==='tablet' ? '18px' : '20px', display:'flex', flexDirection:'column', gap:0}}>
               {device==='mobile' && <div style={{width:36,height:4,background:'#e8e6e1',borderRadius:99,margin:'0 auto 10px', flexShrink:0}}/>}
-              <div key={page?.id} className={(!theme.disableAnimation && theme.transition && theme.transition!=='none') ? `page-anim pt-${theme.transition}` : ''} style={{display:'flex',flexDirection:'column',gap:0}}>
           {(page?.blocks||[]).map((bid, idx)=>(
             <div key={bid} data-block-id={bid}
               onDragOver={e=>{ e.preventDefault(); setDragOverIdx(idx)}}
@@ -2298,14 +2297,13 @@ function Canvas({ previewBlock, setPreviewBlock, previewBlocks, setPreviewBlocks
             }
             window.dispatchEvent(new CustomEvent('open-library'))
           }}>+</button>
-              </div>
           {funnel.settings.legal?.footerDisclaimer && (
             <div style={{marginTop:16,padding:'10px 12px',background:'#f5f4f1',border:'1px solid var(--line)',borderRadius:8,fontSize:11,color:'var(--muted)',textAlign:'center'}}>{funnel.settings.legal.footerDisclaimer} {funnel.settings.legal?.privacyUrl && <><a href={funnel.settings.legal.privacyUrl} target="_blank" rel="noreferrer" style={{color:theme.colors[2],fontWeight:600}}>Privacy</a> </>}{funnel.settings.legal?.termsUrl && <a href={funnel.settings.legal.termsUrl} target="_blank" rel="noreferrer" style={{color:theme.colors[2],fontWeight:600}}>Terms</a>}</div>
           )}
-            </div>
           </div>
         </div>
       </div>
+    </div>
 
       <FloatingToolbar selectedId={selectedBlockId} />
 
