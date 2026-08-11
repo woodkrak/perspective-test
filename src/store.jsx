@@ -190,12 +190,15 @@ export function createRobustDemoFunnel(){
   ], {optionDisplay:'icon', autoAdvance:false})
   q1.q.style.size = 24
   q1.q.style.bold = true
+  // force high-contrast dark ink on light canvas — never pink on pink
+  q1.q.style.color = {kind:'solid', hex:'#1a1a1a'}
+  q1.answers.forEach(a=> { a.style.color = {kind:'solid', hex:'#1a1a1a'}; a.style.background = {kind:'token', slot:0} })
   ;[q1.q, ...q1.answers].forEach(b=> map[b.id]=b)
   const q1Help = makeBlock('text', { content:'Your tags shape the result — honest answers only.', style:{ size:14, align:'center', italic:true, color:{kind:'solid', hex:'#6b6b6b'} } })
   map[q1Help.id]=q1Help
   addPage('Q1 — Stage','q1',[q1.q, q1Help])
-  // give Q1 a gradient page to break monotone
-  pages[pages.length-1].background = {kind:'gradient', from:'#fff1f2', to:'#ffffff', angle:180}
+  // solid white page for max contrast — no pink-on-pink
+  pages[pages.length-1].background = {kind:'solid', hex:'#ffffff'}
   // Q2 — team size — text
   const q2 = mkQuiz('How large is your team?', [
     {label:'Just me', score:1, tags:['solo'], icon:'👤', reportBody:'Solo operator — leverage automation.'},
