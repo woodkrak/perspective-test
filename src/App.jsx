@@ -22,8 +22,8 @@ function SettingsModal({ onClose }){
     dispatch({type:'REHYDRATE', payload: next})
   }
   return (
-    <div style={{position:'fixed',inset:0,background:'rgba(15,15,15,.45)',backdropFilter:'blur(6px)',display:'grid',placeItems:'center',zIndex:80,padding:20}} onClick={onClose}>
-      <div style={{width:'min(760px,100%)',background:'#fff',borderRadius:16,overflow:'hidden',boxShadow:'0 24px 48px rgba(0,0,0,.18)',display:'flex',minHeight:420}} onClick={e=>e.stopPropagation()}>
+    <div style={{position:'fixed',inset:0,background:'rgba(15,15,15,.45)',backdropFilter:'blur(6px)',display:'grid',placeItems:'center',zIndex:80,padding:20,overflowY:'auto'}} onClick={onClose}>
+      <div style={{width:'min(760px,100%)',background:'#fff',borderRadius:16,overflow:'hidden',boxShadow:'0 24px 48px rgba(0,0,0,.18)',display:'flex',minHeight:420,maxHeight:'calc(100vh - 40px)'}} onClick={e=>e.stopPropagation()}>
         <div style={{width:180,borderRight:'1px solid var(--line)',padding:16,display:'flex',flexDirection:'column',gap:6,background:'#fafaf8'}}>
           <div style={{fontSize:11,letterSpacing:'.08em',textTransform:'uppercase',color:'var(--faint)',fontWeight:700,marginBottom:6}}>Overview</div>
           {[
