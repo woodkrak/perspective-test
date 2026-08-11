@@ -186,13 +186,7 @@ function PreviewModal({ onClose }){
         }
       }
     }
-    if(answeredQuiz){
-      const chosen = answers[answeredQuiz.trackingId]
-      if(chosen){
-        const ansBlock = funnel.blocksById[chosen]
-        if(ansBlock?.resultRef){ setResultId(ansBlock.resultRef); return }
-      }
-    }
+    // removed early per-answer resultRef jump — now terminal-only via session.lastResultRef
     if(target.kind==='next'){
       if(idx < funnel.pages.length-1) setIdx(i=>i+1)
       else {

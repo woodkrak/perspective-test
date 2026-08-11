@@ -187,7 +187,7 @@ export function createRobustDemoFunnel(){
     {label:'Growing steadily', score:3, tags:['growth'], icon:'🌿', reportHeadline:'Growth mode — optimize', reportBody:'You have traction, {{firstName}}. Now tighten conversion and repeat what works. Tag: growth.', insightLabel:'Growth playbook', insightUrl:'https://example.com/growth'},
     {label:'Scaling fast', score:6, tags:['scale','qualified'], icon:'🚀', reportHeadline:'Scale — systems needed', reportBody:'Scaling fast is exciting. Score {{score}} suggests you need systems. {{brandName}} can automate follow-up.', insightLabel:'Scale guide', insightUrl:'https://example.com/scale'},
     {label:'Enterprise level', score:10, tags:['enterprise','qualified'], icon:'🏢', reportHeadline:'Enterprise — bespoke', reportBody:'Enterprise, {{firstName}} — your {{quizName}} score {{score}} qualifies for 1:1 strategy.', insightLabel:'Enterprise consult', insightUrl:'https://example.com/enterprise'},
-  ], {optionDisplay:'icon', autoAdvance:false})
+  ], {optionDisplay:'icon', autoAdvance:true})
   q1.q.style.size = 24
   q1.q.style.bold = true
   // force high-contrast dark ink on light canvas — never pink on pink
@@ -205,7 +205,7 @@ export function createRobustDemoFunnel(){
     {label:'2–5 people', score:3, tags:['small-team'], icon:'👥'},
     {label:'6–20 people', score:6, tags:['mid-team','qualified'], icon:'🏢', reportHeadline:'Mid-team — process matters', reportBody:'Team of 6–20, {{firstName}} — process is your bottleneck.'},
     {label:'20+ people', score:10, tags:['large-team','enterprise'], icon:'🌐', reportHeadline:'Large team — orchestration', reportBody:'Large team score {{score}} — align on one funnel.'},
-  ], {optionDisplay:'text'})
+  ], {optionDisplay:'text', autoAdvance:true})
   ;[q2.q, ...q2.answers].forEach(b=> map[b.id]=b)
   addPage('Q2 — Team','q2',[q2.q])
   // Q3 — revenue — image display + contextual image to showcase shadow
@@ -214,7 +214,7 @@ export function createRobustDemoFunnel(){
     {label:'$10k – $50k', score:4, tags:['growth']},
     {label:'$50k – $250k', score:7, tags:['scale','qualified']},
     {label:'$250k+', score:10, tags:['enterprise','qualified']},
-  ], {optionDisplay:'image', autoAdvance:false})
+  ], {optionDisplay:'image', autoAdvance:true})
   q3.q.style.size = 22
   ;[q3.q, ...q3.answers].forEach(b=> map[b.id]=b)
   const q3Img = makeBlock('image', { content:'https://picsum.photos/seed/revenue-7q/720/380', dropShadow:true })
@@ -245,7 +245,7 @@ export function createRobustDemoFunnel(){
     {label:'$1k – $5k', score:3, tags:['growth'], icon:'💰'},
     {label:'$5k – $25k', score:7, tags:['scale','qualified'], icon:'💎', reportHeadline:'Healthy budget — scale', reportBody:'With ${{score}} pts budget, {{brandName}} ROI is strongest.'},
     {label:'$25k+ / mo', score:10, tags:['enterprise','qualified'], icon:'🏦', reportHeadline:'Enterprise budget', reportBody:'Enterprise budget qualifies for done-for-you. Score {{score}}.'},
-  ], {optionDisplay:'icon'})
+  ], {optionDisplay:'icon', autoAdvance:true})
   ;[q6.q, ...q6.answers].forEach(b=> map[b.id]=b)
   const q6Img = makeBlock('image', { content:'https://picsum.photos/seed/budget-7q/720/360', dropShadow:true })
   map[q6Img.id]=q6Img
@@ -256,7 +256,7 @@ export function createRobustDemoFunnel(){
     {label:'Interested — need details', score:3, tags:['warm']},
     {label:'Ready — have time & budget', score:7, tags:['hot','qualified'], icon:'✅', reportHeadline:'Ready — let’s move', reportBody:'Ready is 80% of success, {{firstName}}. Score {{score}} — we’ll hold a spot.'},
     {label:'All in — start today', score:10, tags:['urgent','enterprise','qualified'], icon:'🔥', reportHeadline:'All in 🔥', reportBody:'All-in commitment unlocks {{brandName}} fast-track. Score {{score}} — {{quizName}} says now.', insightLabel:'Start now', insightUrl:'https://example.com/start'},
-  ], {optionDisplay:'image', autoAdvance:false})
+  ], {optionDisplay:'image', autoAdvance:true})
   q7.q.style.size = 24
   q7.q.style.bold = true
   ;[q7.q, ...q7.answers].forEach(b=> map[b.id]=b)
@@ -278,7 +278,7 @@ export function createRobustDemoFunnel(){
   } })
   ;[capHead, capSub, capForm].forEach(b=> map[b.id]=b)
   addPage('Lead capture','capture',[capHead, capSub, capForm])
-  // Results — 3 with score/tag rules
+  // Results — 3 with score/tag rules (score/tag only — no per-answer resultRef, so early clicks don’t jump to result)
   const rA = { id:'rA', letter:'A', name:'Starter — Foundations', selectionRules:[
     {conditions:[{operator:'score_lte', value:'12'}]},
   ]}
@@ -290,8 +290,6 @@ export function createRobustDemoFunnel(){
     {conditions:[{operator:'score_gte', value:'25'}]},
     {conditions:[{operator:'has_tag', value:'enterprise'}]},
   ]}
-  // Link some answers directly to results as fallback (first answer of each tier)
-  q1.answers[0].resultRef='rA'; q1.answers[1].resultRef='rB'; q1.answers[2].resultRef='rC'; q1.answers[3].resultRef='rC'
   return {
     id:'f-demo-7q', name:'7-Question Growth Audit — Demo',
     themeId:'t5',
@@ -299,7 +297,7 @@ export function createRobustDemoFunnel(){
       progressBar:true, progressStyle:'bar', cookieBanner:true,
       socialTitle:'7-Question Growth Audit', socialDesc:'7 questions → score + tags → tailored result. Demo of scoring, icons, autoAdvance, legal, tokens.', favicon:'', language:'en', funnelBackground:{kind:'token', slot:0},
       startCta:'Start my audit', brandName:'Perspective Demo', category:'SaaS', subtitle:'Score + tags drive the result — {{score}} determines A/B/C',
-      autoAdvance:false, autoAdvanceDelayMs:700,
+      autoAdvance:true, autoAdvanceDelayMs:700,
       legal:{ bannerText:'Demo quiz — scoring + tags + icons + tokens live. Try Preview.', footerDisclaimer:'© 2026 Perspective Demo — demo data, not real advice.', privacyUrl:'https://example.com/privacy', termsUrl:'https://example.com/terms' },
     },
     pages, results:[rA,rB,rC],
