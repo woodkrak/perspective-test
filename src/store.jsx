@@ -57,7 +57,13 @@ function defaultContent(type){
   if(type==='video') return 'https://www.youtube.com/embed/dQw4w9WgXcQ'
   if(type==='quiz') return { question: 'What best describes your current situation?' }
   if(type==='answer') return 'Just getting started'
-  if(type==='form') return { placeholder:'Enter your email', label:'Email address' }
+  if(type==='form') return {
+    formTitle: '',
+    submitLabel: 'Continue',
+    fields: [
+      { id: Math.random().toString(36).slice(2,7), type:'email', label:'Email address', placeholder:'you@company.com', helperText:'We’ll never share your email.', required:true, options:[] },
+    ]
+  }
   if(type==='reviews') return { rating:5, text:'“This funnel doubled our conversion rate — absolutely love it!” — Alex, Founder', author:'Alex' }
   if(type==='logo') return { logos:['ACME','Globex','Soylent','Initech'] }
   if(type==='testimonial') return { text:'“The best investment we made this year.”', author:'— Jamie, CEO' }
@@ -234,10 +240,19 @@ export function createRobustDemoFunnel(){
   ], {optionDisplay:'image', autoAdvance:false})
   ;[q7.q, ...q7.answers].forEach(b=> map[b.id]=b)
   addPage('Q7 — Commitment','q7',[q7.q])
-  // Lead capture
+  // Lead capture — multi-field demo
   const capHead = makeBlock('text', { content:'Get your personalized plan — {{brandName}}', style:{ size:'L', align:'center', bold:true } })
-  const capSub = makeBlock('text', { content:'Your score {{score}} and tags determine the result. Drop your email — we’ll send the detailed report (with {{firstName}} merge).', style:{ size:'M', align:'center' } })
-  const capForm = makeBlock('form', { content:{ label:'Work email', placeholder:'you@company.com' } })
+  const capSub = makeBlock('text', { content:'Your score {{score}} and tags determine the result. Leave your details — we’ll send the detailed report (with {{firstName}} merge).', style:{ size:'M', align:'center' } })
+  const capForm = makeBlock('form', { content:{
+    formTitle: 'Your details',
+    submitLabel: 'Get my plan →',
+    fields: [
+      { id: uid(), type:'text', label:'First name', placeholder:'Alex', helperText:'So we can personalize your report', required:true, options:[] },
+      { id: uid(), type:'email', label:'Work email', placeholder:'you@company.com', helperText:'We’ll send your plan here', required:true, options:[] },
+      { id: uid(), type:'phone', label:'', placeholder:'Phone (optional)', helperText:'Optional — for a quick SMS summary', required:false, options:[] },
+      { id: uid(), type:'select', label:'Team size', placeholder:'Select…', helperText:'', required:false, options:['Just me','2–5','6–20','20+'] },
+    ]
+  } })
   ;[capHead, capSub, capForm].forEach(b=> map[b.id]=b)
   addPage('Lead capture','capture',[capHead, capSub, capForm])
   // Results — 3 with score/tag rules
@@ -409,6 +424,38 @@ function migratePersisted(saved){
         if(b.autoAdvance===undefined) b.autoAdvance=false
         if(b.autoAdvanceDelayMs===undefined) b.autoAdvanceDelayMs=600
       }
+      // Form: migrate legacy {label,placeholder} → {fields:[], formTitle, submitLabel}
+      if(b.type==='form'){
+        let c = b.content
+        if(typeof c==='string'){
+          b.content = { formTitle:'', submitLabel:'Continue', fields:[{id:uid(), type:'text', label:c, placeholder:'', helperText:'', required:false, options:[]}] }
+          c = b.content
+        } else if(c && typeof c==='object' && !Array.isArray(c) && !c.fields){
+          // legacy single-field
+          const legacyLabel = c.label || 'Email address'
+          const legacyPlaceholder = c.placeholder || ''
+          b.content = {
+            formTitle: '',
+            submitLabel: 'Continue',
+            fields: [{ id: uid(), type:'email', label: legacyLabel, placeholder: legacyPlaceholder, helperText:'', required:true, options:[] }]
+          }
+          c = b.content
+        }
+        // ensure fields shape
+        if(c && c.fields && Array.isArray(c.fields)){
+          b.content.fields = c.fields.map(f=>({
+            id: f.id || uid(),
+            type: f.type || 'text',
+            label: f.label ?? '',
+            placeholder: f.placeholder ?? '',
+            helperText: f.helperText ?? '',
+            required: !!f.required,
+            options: Array.isArray(f.options) ? f.options : [],
+          }))
+          if(b.content.formTitle===undefined) b.content.formTitle=''
+          if(b.content.submitLabel===undefined) b.content.submitLabel='Continue'
+        }
+      }
     })
     // P2: backfill result selectionRules
     if(saved.results){
@@ -427,11 +474,11 @@ function migratePersisted(saved){
         })
       })
     }
-    // ensure p3 has form if empty
+    // ensure p3 has form if empty — create new shape
     const p3 = saved.pages?.[2]
     if(p3 && (!p3.blocks || p3.blocks.length===0)){
       const fid = uid(); const tid = uid()
-      const form = { id: fid, type:'form', parentId:null, order:Date.now(), content:{ label:'Get your plan', placeholder:'Enter your email' }, style:{ size:'M', bold:false, italic:false, underline:false, align:'center', color:{kind:'token',slot:2}, background:{kind:'token',slot:0}, spacingTop:8, spacingBottom:8 }, styleOverrides:{}, trackingId: trackId('form'), linking:{mode:'always', always:{kind:'next'}}, resultRef:null, children:[] }
+      const form = { id: fid, type:'form', parentId:null, order:Date.now(), content:{ formTitle:'', submitLabel:'Continue', fields:[{id:uid(), type:'email', label:'Email address', placeholder:'you@company.com', helperText:'We’ll send your plan here', required:true, options:[]}] }, style:{ size:'M', bold:false, italic:false, underline:false, align:'center', color:{kind:'token',slot:2}, background:{kind:'token',slot:0}, spacingTop:8, spacingBottom:8 }, styleOverrides:{}, trackingId: trackId('form'), linking:{mode:'always', always:{kind:'next'}}, resultRef:null, children:[] }
       const txt = { id: tid, type:'text', parentId:null, order:Date.now()-1, content:'Drop your email and we’ll send the personalized plan in under a minute.', style:{ size:'M', bold:false, italic:false, underline:false, align:'center', color:{kind:'token',slot:2}, background:{kind:'token',slot:0}, spacingTop:8, spacingBottom:8 }, styleOverrides:{}, trackingId: trackId('text'), linking:{mode:'always', always:{kind:'next'}}, resultRef:null, children:[] }
       saved.blocksById[fid]=form; saved.blocksById[tid]=txt
       p3.blocks=[tid,fid]

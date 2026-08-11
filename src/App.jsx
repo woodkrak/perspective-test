@@ -283,7 +283,24 @@ function PreviewModal({ onClose }){
               </div>
             )
           }
-          if(b.type==='form') return <div key={bid} className="form-box"><input placeholder={b.content?.placeholder} /><button className="btn btn-filled" style={{background:buttonBg(theme)}} onClick={goNext}>Continue</button></div>
+          if(b.type==='form') {
+            const fields=b.content?.fields || (b.content?.label ? [{id:'legacy', type:'email', label:b.content.label, placeholder:b.content.placeholder, helperText:'', required:true, options:[]}] : [])
+            return <div key={bid} className="form-box" style={{display:'flex',flexDirection:'column',gap:10, background:'#fff',border:'1px solid var(--line)',borderRadius:12,padding:14}}>
+              {b.content?.formTitle && <div style={{fontWeight:700,fontSize:14}}>{b.content.formTitle}</div>}
+              {fields.map(f=>(
+                <div key={f.id} style={{display:'flex',flexDirection:'column',gap:4}}>
+                  {f.label ? <label style={{fontSize:12,fontWeight:600}}>{f.label}{f.required && <span style={{color:'#dc2626'}}> *</span>}</label> : null}
+                  {f.type==='textarea' ? <textarea placeholder={f.placeholder} required={f.required} style={{border:'1px solid var(--line)',borderRadius:8,padding:'8px 10px',fontSize:13,minHeight:70}} />
+                  : f.type==='select' ? <select required={f.required} style={{border:'1px solid var(--line)',borderRadius:8,padding:'8px 10px',fontSize:13}}><option value="">{f.placeholder||'Select…'}</option>{(f.options||[]).map((o,i)=><option key={i} value={o}>{o}</option>)}</select>
+                  : f.type==='checkbox' ? <label style={{display:'flex',gap:6,alignItems:'center',fontSize:13}}><input type="checkbox" required={f.required}/> {f.label||f.placeholder}</label>
+                  : f.type==='file' ? <input type="file" required={f.required} style={{fontSize:13}} />
+                  : <input type={f.type==='phone'?'tel':f.type} placeholder={f.placeholder} required={f.required} style={{border:'1px solid var(--line)',borderRadius:8,padding:'8px 10px',fontSize:13}} />}
+                  {f.helperText && <div style={{fontSize:11,color:'var(--faint)'}}>{f.helperText}</div>}
+                </div>
+              ))}
+              <button className="btn btn-filled" style={{background:buttonBg(theme),alignSelf:'stretch'}} onClick={goNext}>{b.content?.submitLabel||'Continue'}</button>
+            </div>
+          }
           return null
         })}
         {page?.blocks?.length===0 && <div className="empty">Empty page — add blocks in the builder</div>}
@@ -655,9 +672,35 @@ function LeftRail({ onRequestAdd }){
                   {type:'payment',label:'Payment',icon:'€'},
                 ].map(b=>(
                   <button key={b.label} className="lib-tile" onClick={()=>{
+                    const uid2=()=>Math.random().toString(36).slice(2,7)
                     if(b.type==='form') onRequestAdd(makeBlock('form'), null)
-                    else if(b.type==='dropdown') onRequestAdd(makeBlock('text', {content:'Dropdown — Option 1, Option 2'}), null)
-                    else onRequestAdd(makeBlock('form', {content:{label:b.label, placeholder: b.label}}), null)
+                    else if(b.type==='appointment') onRequestAdd(makeBlock('form', {content:{formTitle:'Book an appointment', submitLabel:'Schedule', fields:[
+                      {id:uid2(), type:'text', label:'Name', placeholder:'Alex', helperText:'', required:true, options:[]},
+                      {id:uid2(), type:'email', label:'Email', placeholder:'you@company.com', helperText:'', required:true, options:[]},
+                      {id:uid2(), type:'date', label:'Preferred date', placeholder:'', helperText:'', required:true, options:[]},
+                      {id:uid2(), type:'select', label:'Time', placeholder:'Select time', helperText:'', required:false, options:['09:00','11:00','14:00','16:00']},
+                    ]}}), null)
+                    else if(b.type==='upload') onRequestAdd(makeBlock('form', {content:{formTitle:'Upload file', submitLabel:'Upload', fields:[
+                      {id:uid2(), type:'file', label:'File', placeholder:'', helperText:'Max 10MB — pdf, png, jpg', required:true, options:[]},
+                      {id:uid2(), type:'text', label:'Description', placeholder:'What is this file?', helperText:'', required:false, options:[]},
+                    ]}}), null)
+                    else if(b.type==='message') onRequestAdd(makeBlock('form', {content:{formTitle:'Send a message', submitLabel:'Send', fields:[
+                      {id:uid2(), type:'text', label:'Name', placeholder:'Alex', helperText:'', required:false, options:[]},
+                      {id:uid2(), type:'email', label:'Email', placeholder:'you@company.com', helperText:'', required:true, options:[]},
+                      {id:uid2(), type:'textarea', label:'Message', placeholder:'Your message…', helperText:'We’ll reply within 24h', required:true, options:[]},
+                    ]}}), null)
+                    else if(b.type==='date') onRequestAdd(makeBlock('form', {content:{formTitle:'Pick a date', submitLabel:'Confirm', fields:[
+                      {id:uid2(), type:'date', label:'Date', placeholder:'', helperText:'', required:true, options:[]},
+                    ]}}), null)
+                    else if(b.type==='dropdown') onRequestAdd(makeBlock('form', {content:{formTitle:'Choose an option', submitLabel:'Continue', fields:[
+                      {id:uid2(), type:'select', label:'Options', placeholder:'Select…', helperText:'', required:true, options:['Option A','Option B','Option C']},
+                    ]}}), null)
+                    else if(b.type==='payment') onRequestAdd(makeBlock('form', {content:{formTitle:'Payment', submitLabel:'Pay now', fields:[
+                      {id:uid2(), type:'text', label:'Card number', placeholder:'4242 4242 4242 4242', helperText:'', required:true, options:[]},
+                      {id:uid2(), type:'text', label:'Expiry', placeholder:'MM / YY', helperText:'', required:true, options:[]},
+                      {id:uid2(), type:'text', label:'CVC', placeholder:'123', helperText:'', required:true, options:[]},
+                    ]}}), null)
+                    else onRequestAdd(makeBlock('form', {content:{formTitle:b.label, submitLabel:'Continue', fields:[{id:uid2(), type:'text', label:b.label, placeholder:b.label, helperText:'', required:false, options:[]}]}}), null)
                   }}>
                     <span className="box">{b.icon}</span>{b.label}
                   </button>
@@ -975,6 +1018,7 @@ function PropertyPanel({ block, theme, funnel }){
   const isImage = block.type==='image'
   const isVideo = block.type==='video'
   const isButton = block.type==='button'
+  const isForm = block.type==='form'
   const toEmbed = (url)=>{
     if(!url || typeof url!=='string') return null
     const s=url.trim(); if(!s) return null
@@ -1271,6 +1315,123 @@ function PropertyPanel({ block, theme, funnel }){
             <button className="chip">Filled</button><button className="chip">Outline</button>
           </div>
           <label className="row" style={{fontSize:12,marginTop:6}}><input type="checkbox"/> Take full width on Desktop</label>
+        </div>
+      )}
+
+      {isForm && (
+        <div style={{display:'flex',flexDirection:'column',gap:10, border:'1px solid var(--line)',borderRadius:12,padding:12,background:'#fff'}}>
+          <div style={{fontSize:11,letterSpacing:'.06em',textTransform:'uppercase',color:'var(--faint)',fontWeight:700}}>Form — fields</div>
+          <div className="control-row">
+            <div className="control-label">Form title <span style={{fontWeight:400,color:'var(--faint)'}}>(optional heading)</span></div>
+            <input className="input" value={block.content?.formTitle||''} onChange={e=>dispatch({type:'UPDATE_BLOCK', id:block.id, patch:{ content:{...block.content, formTitle: e.target.value}}})} placeholder="Your details" />
+          </div>
+          <div className="control-row">
+            <div className="control-label">Submit button label</div>
+            <input className="input" value={block.content?.submitLabel||'Continue'} onChange={e=>dispatch({type:'UPDATE_BLOCK', id:block.id, patch:{ content:{...block.content, submitLabel: e.target.value}}})} placeholder="Continue" />
+          </div>
+          <div style={{height:1,background:'var(--line)'}}/>
+          {(block.content?.fields||[]).map((f,idx)=>(
+            <div key={f.id} style={{border:'1px solid var(--line)',borderRadius:10,padding:10,background:'#fafaf8',display:'flex',flexDirection:'column',gap:8}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                <span style={{fontSize:12,fontWeight:700,color:'var(--muted)'}}>Field {idx+1} · {f.type}</span>
+                <span style={{display:'flex',gap:4}}>
+                  <button className="chip" disabled={idx===0} onClick={()=>{
+                    const fs=[...block.content.fields]; const [m]=fs.splice(idx,1); fs.splice(idx-1,0,m)
+                    dispatch({type:'UPDATE_BLOCK', id:block.id, patch:{ content:{...block.content, fields:fs}}})
+                  }}>↑</button>
+                  <button className="chip" disabled={idx===(block.content.fields.length-1)} onClick={()=>{
+                    const fs=[...block.content.fields]; const [m]=fs.splice(idx,1); fs.splice(idx+1,0,m)
+                    dispatch({type:'UPDATE_BLOCK', id:block.id, patch:{ content:{...block.content, fields:fs}}})
+                  }}>↓</button>
+                  <button className="chip" style={{background:'#fff',borderColor:'#fecaca',color:'#dc2626'}} onClick={()=>{
+                    if(!confirm(`Delete field "${f.label||f.placeholder||f.type}"?`)) return
+                    const fs=block.content.fields.filter(x=>x.id!==f.id)
+                    dispatch({type:'UPDATE_BLOCK', id:block.id, patch:{ content:{...block.content, fields:fs}}})
+                  }}>Delete</button>
+                </span>
+              </div>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>
+                <label style={{display:'flex',flexDirection:'column',gap:4}}>
+                  <span style={{fontSize:11,fontWeight:600,color:'var(--muted)'}}>Type</span>
+                  <select className="select" value={f.type} onChange={e=>{
+                    const fs=block.content.fields.map(x=> x.id===f.id ? {...x, type:e.target.value}: x)
+                    dispatch({type:'UPDATE_BLOCK', id:block.id, patch:{ content:{...block.content, fields:fs}}})
+                  }}>
+                    <option value="text">Text</option>
+                    <option value="email">Email</option>
+                    <option value="phone">Phone</option>
+                    <option value="textarea">Textarea</option>
+                    <option value="select">Select / Dropdown</option>
+                    <option value="date">Date</option>
+                    <option value="checkbox">Checkbox</option>
+                    <option value="file">File upload</option>
+                    <option value="number">Number</option>
+                    <option value="url">URL</option>
+                  </select>
+                </label>
+                <label style={{display:'flex',gap:6,alignItems:'center',fontSize:12,justifyContent:'flex-end'}}>
+                  <span className={`toggle ${f.required?'on':''}`} onClick={()=>{
+                    const fs=block.content.fields.map(x=> x.id===f.id ? {...x, required: !x.required}: x)
+                    dispatch({type:'UPDATE_BLOCK', id:block.id, patch:{ content:{...block.content, fields:fs}}})
+                  }}><i/></span> Required
+                </label>
+              </div>
+              <label style={{display:'flex',flexDirection:'column',gap:4}}>
+                <span style={{fontSize:11,fontWeight:600,color:'var(--muted)'}}>Label <span style={{fontWeight:400,color:'var(--faint)'}}>(leave empty for no label)</span></span>
+                <input className="input" value={f.label} onChange={e=>{
+                  const fs=block.content.fields.map(x=> x.id===f.id ? {...x, label:e.target.value}: x)
+                  dispatch({type:'UPDATE_BLOCK', id:block.id, patch:{ content:{...block.content, fields:fs}}})
+                }} placeholder="e.g. First name" />
+              </label>
+              <label style={{display:'flex',flexDirection:'column',gap:4}}>
+                <span style={{fontSize:11,fontWeight:600,color:'var(--muted)'}}>Placeholder</span>
+                <input className="input" value={f.placeholder||''} onChange={e=>{
+                  const fs=block.content.fields.map(x=> x.id===f.id ? {...x, placeholder:e.target.value}: x)
+                  dispatch({type:'UPDATE_BLOCK', id:block.id, patch:{ content:{...block.content, fields:fs}}})
+                }} placeholder="e.g. Alex" />
+              </label>
+              <label style={{display:'flex',flexDirection:'column',gap:4}}>
+                <span style={{fontSize:11,fontWeight:600,color:'var(--muted)'}}>Helper text <span style={{fontWeight:400,color:'var(--faint)'}}>(small text below field)</span></span>
+                <input className="input" value={f.helperText||''} onChange={e=>{
+                  const fs=block.content.fields.map(x=> x.id===f.id ? {...x, helperText:e.target.value}: x)
+                  dispatch({type:'UPDATE_BLOCK', id:block.id, patch:{ content:{...block.content, fields:fs}}})
+                }} placeholder="We’ll never share your email." />
+              </label>
+              {f.type==='select' && (
+                <label style={{display:'flex',flexDirection:'column',gap:4}}>
+                  <span style={{fontSize:11,fontWeight:600,color:'var(--muted)'}}>Options <span style={{fontWeight:400,color:'var(--faint)'}}>(comma-separated)</span></span>
+                  <input className="input" value={(f.options||[]).join(', ')} onChange={e=>{
+                    const opts=e.target.value.split(',').map(s=>s.trim()).filter(Boolean)
+                    const fs=block.content.fields.map(x=> x.id===f.id ? {...x, options:opts}: x)
+                    dispatch({type:'UPDATE_BLOCK', id:block.id, patch:{ content:{...block.content, fields:fs}}})
+                  }} placeholder="Option A, Option B, Option C" />
+                </label>
+              )}
+            </div>
+          ))}
+          <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+            <button className="chip" style={{background:'#111',color:'#fff'}} onClick={()=>{
+              const nid=Math.random().toString(36).slice(2,7)
+              const fs=[...(block.content.fields||[]), {id:nid, type:'text', label:'New field', placeholder:'', helperText:'', required:false, options:[]}]
+              dispatch({type:'UPDATE_BLOCK', id:block.id, patch:{ content:{...block.content, fields:fs}}})
+            }}>+ Add field</button>
+            <button className="chip" onClick={()=>{
+              const nid=Math.random().toString(36).slice(2,7)
+              const fs=[...(block.content.fields||[]), {id:nid, type:'email', label:'Email', placeholder:'you@company.com', helperText:'', required:true, options:[]}]
+              dispatch({type:'UPDATE_BLOCK', id:block.id, patch:{ content:{...block.content, fields:fs}}})
+            }}>+ Email</button>
+            <button className="chip" onClick={()=>{
+              const nid=Math.random().toString(36).slice(2,7)
+              const fs=[...(block.content.fields||[]), {id:nid, type:'phone', label:'Phone', placeholder:'+1 …', helperText:'Optional', required:false, options:[]}]
+              dispatch({type:'UPDATE_BLOCK', id:block.id, patch:{ content:{...block.content, fields:fs}}})
+            }}>+ Phone</button>
+            <button className="chip" onClick={()=>{
+              const nid=Math.random().toString(36).slice(2,7)
+              const fs=[...(block.content.fields||[]), {id:nid, type:'select', label:'Select', placeholder:'Choose…', helperText:'', required:false, options:['Option A','Option B']}]
+              dispatch({type:'UPDATE_BLOCK', id:block.id, patch:{ content:{...block.content, fields:fs}}})
+            }}>+ Dropdown</button>
+          </div>
+          <div style={{fontSize:11,color:'var(--faint)'}}>Tip: leave <em>Label</em> empty and use <em>Helper text</em> for a caption-only line. Toggle <em>Required</em> per field — validated in Preview + demo persistence hook.</div>
         </div>
       )}
 
@@ -1681,10 +1842,33 @@ function BlockRenderer({ blockId, depth=0, onSelect }){
       inner = <div className="video-box" style={{borderRadius:radius, padding:0, overflow:'hidden', background:'#000', aspectRatio:'16/9'}}><iframe src={src} title="Video" style={{width:'100%',height:'100%',border:'none'}} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen /></div>
     }
   } else if(block.type==='form'){
-    inner = <div className="form-box" style={{borderRadius: radius}}>
-      <div style={{fontWeight:600, fontSize:13}}>{block.content?.label || 'Email address'}</div>
-      <input placeholder={block.content?.placeholder || 'Enter your email'} />
-      <button className="btn btn-filled" style={{background:buttonBg(theme)}}>Continue</button>
+    const fields = block.content?.fields || []
+    const legacyLabel = block.content?.label
+    const legacyPlaceholder = block.content?.placeholder
+    const effectiveFields = fields.length ? fields : (legacyLabel || legacyPlaceholder ? [{id:'legacy', type:'email', label: legacyLabel||'Email', placeholder: legacyPlaceholder||'', helperText:'', required:true, options:[]}] : [])
+    inner = <div className="form-box" style={{borderRadius: radius, display:'flex',flexDirection:'column',gap:12}}>
+      {block.content?.formTitle && <div style={{fontWeight:700,fontSize:15,fontFamily: headlineFont}}>{block.content.formTitle}</div>}
+      {effectiveFields.map(f=>(
+        <div key={f.id} style={{display:'flex',flexDirection:'column',gap:4}}>
+          {f.label ? <label style={{fontSize:12,fontWeight:600,display:'flex',gap:4}}>{f.label}{f.required && <span style={{color:'#dc2626'}}>*</span>}</label> : null}
+          {f.type==='textarea' ? (
+            <textarea placeholder={f.placeholder} required={f.required} style={{border:'1px solid var(--line)',borderRadius:8,padding:'8px 10px',fontSize:13,minHeight:80,resize:'vertical'}} />
+          ) : f.type==='select' ? (
+            <select required={f.required} style={{border:'1px solid var(--line)',borderRadius:8,padding:'8px 10px',fontSize:13,background:'#fff'}}>
+              <option value="">{f.placeholder||'Select…'}</option>
+              {(f.options||[]).map((o,i)=><option key={i} value={o}>{o}</option>)}
+            </select>
+          ) : f.type==='checkbox' ? (
+            <label style={{display:'flex',gap:8,alignItems:'center',fontSize:13}}><input type="checkbox" required={f.required} /> <span>{f.label || f.placeholder || 'I agree'}</span>{f.required && <span style={{color:'#dc2626'}}>*</span>}</label>
+          ) : f.type==='file' ? (
+            <input type="file" required={f.required} style={{fontSize:13}} />
+          ) : (
+            <input type={f.type==='phone' ? 'tel' : f.type} placeholder={f.placeholder} required={f.required} style={{border:'1px solid var(--line)',borderRadius:8,padding:'8px 10px',fontSize:13}} />
+          )}
+          {f.helperText && <div style={{fontSize:11,color:'var(--faint)'}}>{f.helperText}</div>}
+        </div>
+      ))}
+      <button className="btn btn-filled" style={{background:buttonBg(theme),fontFamily: headlineFont}}>{block.content?.submitLabel||'Continue'}</button>
     </div>
   } else if(block.type==='quiz'){
     inner = (
@@ -1997,7 +2181,20 @@ function Canvas({ previewBlock, setPreviewBlock, previewBlocks, setPreviewBlocks
                 {previewBlock.type==='divider' && <div className="divider"/>}
                 {previewBlock.type==='list' && <ul className="list" style={{color:'#111'}}><li>{Array.isArray(previewBlock.content)? previewBlock.content[0] : 'List preview'}</li></ul>}
                 {previewBlock.type==='video' && <div className="video-box">Video preview</div>}
-                {previewBlock.type==='form' && <div className="form-box"><input placeholder={previewBlock.content?.placeholder} /><button className="btn btn-filled" style={{background:buttonBg(theme)}}>Continue</button></div>}
+                {previewBlock.type==='form' && (
+                  <div className="form-box" style={{border:'1px solid var(--line)',borderRadius:8,padding:10,background:'#fafaf8',display:'flex',flexDirection:'column',gap:6}}>
+                    {previewBlock.content?.formTitle && <div style={{fontWeight:600,fontSize:12}}>{previewBlock.content.formTitle}</div>}
+                    {(previewBlock.content?.fields||[]).slice(0,3).map(f=>(
+                      <div key={f.id} style={{display:'flex',flexDirection:'column',gap:2}}>
+                        {f.label ? <span style={{fontSize:11,fontWeight:600}}>{f.label}{f.required?' *':''}</span>:null}
+                        <div style={{height:28,background:'#fff',border:'1px solid var(--line)',borderRadius:6,display:'flex',alignItems:'center',padding:'0 8px',fontSize:11,color:'var(--faint)'}}>{f.placeholder||f.type}</div>
+                        {f.helperText && <span style={{fontSize:10,color:'var(--faint)'}}>{f.helperText}</span>}
+                      </div>
+                    ))}
+                    {(previewBlock.content?.fields||[]).length>3 && <div style={{fontSize:11,color:'var(--faint)'}}>+{(previewBlock.content.fields.length-3)} more fields</div>}
+                    <button className="btn btn-filled" style={{background:buttonBg(theme),fontSize:12,padding:'6px 10px'}}>{previewBlock.content?.submitLabel||'Continue'}</button>
+                  </div>
+                )}
               </div>
               <div className="confirm-bar vertical">
                 <button className="confirm-yes" title="Confirm (save)" onClick={()=>{
@@ -2035,7 +2232,16 @@ function Canvas({ previewBlock, setPreviewBlock, previewBlocks, setPreviewBlocks
                     {pb.type==='loader' && <div style={{textAlign:'center',color:'#111',fontSize:12}}>Loading…</div>}
                     {pb.type==='embed' && <div style={{textAlign:'center',padding:6,border:'1px dashed var(--line)',borderRadius:6,color:'#111',fontSize:11}}>{pb.content?.provider || 'Embed'}</div>}
                     {pb.type==='video' && <div style={{textAlign:'center',padding:6,background:'#000',color:'#fff',borderRadius:6,fontSize:11}}>Video</div>}
-                    {pb.type==='form' && <div style={{border:'1px solid var(--line)',borderRadius:6,padding:6,background:'#fafaf8'}}><div style={{fontSize:11,fontWeight:600}}>{pb.content?.label||'Email'}</div><div style={{height:28,background:'#fff',border:'1px solid var(--line)',borderRadius:6,marginTop:4}} /></div>}
+                    {pb.type==='form' && (
+                      <div style={{border:'1px solid var(--line)',borderRadius:6,padding:6,background:'#fafaf8',display:'flex',flexDirection:'column',gap:4}}>
+                        {pb.content?.formTitle && <div style={{fontSize:11,fontWeight:600}}>{pb.content.formTitle}</div>}
+                        {(pb.content?.fields||[{label:pb.content?.label}]).slice(0,2).map((f,i)=>(
+                          <div key={f.id||i} style={{fontSize:11}}>{f.label ? <span style={{fontWeight:600}}>{f.label}{f.required?' *':''}</span> : <span style={{fontSize:11,color:'var(--faint)'}}>{f.placeholder||f.type||'Field'}</span>}{f.helperText ? <div style={{fontSize:10,color:'var(--faint)'}}>{f.helperText}</div> : null}</div>
+                        ))}
+                        {(pb.content?.fields||[]).length>2 && <div style={{fontSize:10,color:'var(--faint)'}}>+{pb.content.fields.length-2} more</div>}
+                        <div style={{height:24,background:'#fff',border:'1px solid var(--line)',borderRadius:6,marginTop:2}} />
+                      </div>
+                    )}
                     {pb.type==='quiz' && (
                       <div>
                         <div style={{fontWeight:700,color:'#111',fontSize:13}} dangerouslySetInnerHTML={{__html: pb.content?.question || 'Question'}} />
