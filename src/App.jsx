@@ -11,6 +11,23 @@ function LucideIcon({ name, size=20 }){
   if(!Icon) return <span style={{fontSize:size,lineHeight:1}}>{name.replace(/^lucide:/,'')}</span>
   return <Icon size={size} strokeWidth={2} />
 }
+function Confetti({ pageId }){
+  const colors = ['#f59e0b','#ec4899','#8b5cf6','#22c55e','#06b6d4','#f43f5e','#eab308']
+  return (
+    <div key={pageId} style={{position:'absolute', inset:0, pointerEvents:'none', overflow:'hidden'}}>
+      {Array.from({length:28}, (_,i)=>{
+        const left = (i*37 + 7) % 100
+        const delay = (i % 7) * 0.08
+        const dur = 1.6 + (i % 3) * 0.25
+        const rot = (i*53) % 360
+        const w = 7 + (i%3)*2
+        const h = 10 + (i%2)*4
+        const color = colors[i % colors.length]
+        return <div key={i} style={{position:'absolute', left:`${left}%`, top:-14, width:w, height:h, background:color, borderRadius: i%2===0?2:99, transform:`rotate(${rot}deg)`, animation:`confettiFall ${dur}s ${delay}s ease-in forwards`}} />
+      })}
+    </div>
+  )
+}
 
 function SettingsModal({ onClose }){
   const { funnel, dispatch } = useFunnel()
@@ -382,7 +399,8 @@ function PreviewModal({ onClose }){
               </div>
             )}
             <div style={{height:4,background:'#efede9', flexShrink:0, borderRadius:99, overflow:'hidden', margin:'6px 10px 0'}}><div style={{width:`${Math.round(((idx+1)/funnel.pages.length)*100)}%`,height:'100%',background:theme.colors[2], borderRadius:99}} /></div>
-            <div style={{flex:1, overflowY:'auto', padding: device==='mobile' ? '12px 16px 18px' : device==='tablet' ? '18px' : '22px', display:'flex', flexDirection:'column', gap:12}}>
+            <div style={{flex:1, overflowY:'auto', padding: device==='mobile' ? '12px 16px 18px' : device==='tablet' ? '18px' : '22px', display:'flex', flexDirection:'column', gap:12, position:'relative'}}>
+              {page?.confetti && <Confetti pageId={page.id} />}
               {device==='mobile' && <div style={{width:36,height:4,background:'#e8e6e1',borderRadius:99,margin:'0 auto 2px', flexShrink:0}}/>}
               {PreviewContent}
             </div>
@@ -2216,7 +2234,8 @@ function Canvas({ previewBlock, setPreviewBlock, previewBlocks, setPreviewBlocks
             {funnel.settings.legal?.bannerText && (
               <div style={{background: theme.colors[2], color:'#fff', textAlign:'center', padding:'6px 10px', fontSize:11, fontWeight:600, flexShrink:0}}>{funnel.settings.legal.bannerText}</div>
             )}
-            <div className="canvas-inner" onDragOver={e=>e.preventDefault()} style={{flex:1, overflowY:'auto', padding: device==='mobile' ? '12px 16px 18px' : device==='tablet' ? '28px 32px 32px' : '32px 40px 40px', display:'flex', flexDirection:'column', gap:0, justifyContent: device==='mobile' ? 'flex-start' : 'safe center', alignItems:'center'}}>
+            <div className="canvas-inner" onDragOver={e=>e.preventDefault()} style={{flex:1, overflowY:'auto', padding: device==='mobile' ? '12px 16px 18px' : device==='tablet' ? '28px 32px 32px' : '32px 40px 40px', display:'flex', flexDirection:'column', gap:0, justifyContent: device==='mobile' ? 'flex-start' : 'safe center', alignItems:'center', position:'relative'}}>
+              {page?.confetti && <Confetti pageId={page.id} />}
               {device==='mobile' && <div style={{width:36,height:4,background:'#e8e6e1',borderRadius:99,margin:'0 auto 10px', flexShrink:0, alignSelf:'stretch'}}/>}
               {(()=>{
                 const isSplit = device==='desktop' && page?.desktopLayout?.mode==='split'
