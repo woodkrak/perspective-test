@@ -147,7 +147,8 @@ function PreviewModal({ onClose }){
   const pageBg = resolveBg(page?.background, theme)
   const pageBgStyle = pageBg ? (pageBg.includes('gradient') ? { background: pageBg } : { background: pageBg }) : { background:'#fff' }
   // keep idx in sync if selectedPage changes while open? no, only on open
-  const goNext = ()=>{
+  const goNext = (overrideAnswers)=>{
+    const effectiveAnswers = overrideAnswers || answers
     const blocks = (page?.blocks||[]).map(id=> funnel.blocksById[id]).filter(Boolean)
     const interactive = blocks.find(b=> b.linking)
     let target = { kind:'next' }
@@ -155,36 +156,32 @@ function PreviewModal({ onClose }){
       const lk = interactive.linking
       if(lk.mode==='always') target = lk.always || {kind:'next'}
       else if(lk.mode==='rules'){
-        const matched = (lk.rules||[]).find(r=> r.conditions.every(c=> String(answers[c.sourceTrackingId] ?? '') === String(c.value ?? '')))
+        const matched = (lk.rules||[]).find(r=> r.conditions.every(c=> String(effectiveAnswers[c.sourceTrackingId] ?? '') === String(c.value ?? '')))
         target = matched ? matched.target : (lk.fallback || {kind:'next'})
       }
     }
     // Priority 1-2: accumulate score/tags and resolve result via rules before linking
-    const { score, tags } = collectScoreAndTags(funnel, answers)
+    const { score, tags } = collectScoreAndTags(funnel, effectiveAnswers)
     const session = { score, tags, lastResultRef: null }
     // capture last assigned resultRef from chosen answers
     const answeredQuiz = blocks.find(b=> b.type==='quiz')
     if(answeredQuiz){
-      const chosen = answers[answeredQuiz.trackingId]
+      const chosen = effectiveAnswers[answeredQuiz.trackingId]
       if(chosen){
         const ansBlock = funnel.blocksById[chosen]
         if(ansBlock?.resultRef) session.lastResultRef = ansBlock.resultRef
       }
     }
-    // if any collected score/tags, try result selection rules
+    // if any collected score/tags, try result selection rules — only at terminal
     let ruleResultId = null
+    let hasRuleHit = false
     if(score>0 || tags.length>0){
       ruleResultId = resolveResultId(funnel, session)
-      // only treat as override if a rule actually matched (i.e., a result with selectionRules produced a hit distinct from fallback)
-      // resolveResultId already checks selectionRules; if no rule matches it returns lastResultRef or first result — so we require at least one rule to have matched
-      const hasRuleHit = (funnel.results||[]).some(r=> (r.selectionRules||[]).length>0 && resolveResultId({ ...funnel, results:[r] }, session)===r.id)
-      if(hasRuleHit && ruleResultId){
-        // when we are on last page or explicit result navigation, honor rule result
-        const isTerminal = idx===funnel.pages.length-1 || target.kind==='result' || target.kind==='next'
-        if(isTerminal){
-          setResultId(ruleResultId); return
-        }
-      }
+      hasRuleHit = (funnel.results||[]).some(r=> (r.selectionRules||[]).length>0 && resolveResultId({ ...funnel, results:[r] }, session)===r.id)
+    }
+    const isLastPage = idx===funnel.pages.length-1
+    if(hasRuleHit && ruleResultId && (isLastPage || target.kind==='result')){
+      setResultId(ruleResultId); return
     }
     // removed early per-answer resultRef jump — now terminal-only via session.lastResultRef
     if(target.kind==='next'){
@@ -249,11 +246,16 @@ function PreviewModal({ onClose }){
             const q = b
             const display = q.optionDisplay||'text'
             const handlePick = (cid)=>{
-              setAnswers(a=>({...a,[q.trackingId]:cid}))
+              let nextAnswers
+              setAnswers(a=>{ nextAnswers = {...a,[q.trackingId]:cid}; return nextAnswers })
               const auto = q.autoAdvance ?? funnel.settings.autoAdvance
               const delay = q.autoAdvanceDelayMs ?? funnel.settings.autoAdvanceDelayMs ?? 600
               if(auto){
-                setTimeout(()=> goNext(), delay)
+                setTimeout(()=> {
+                  // use the just-picked answers so scoring is up to date
+                  const toUse = nextAnswers || {...answers, [q.trackingId]:cid}
+                  goNext(toUse)
+                }, delay)
               }
             }
             return (
