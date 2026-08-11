@@ -22,9 +22,9 @@ function SettingsModal({ onClose }){
     dispatch({type:'REHYDRATE', payload: next})
   }
   return (
-    <div style={{position:'fixed',inset:0,background:'rgba(15,15,15,.45)',backdropFilter:'blur(6px)',display:'grid',placeItems:'center',zIndex:80,padding:20,overflowY:'auto'}} onClick={onClose}>
-      <div style={{width:'min(760px,100%)',background:'#fff',borderRadius:16,overflow:'hidden',boxShadow:'0 24px 48px rgba(0,0,0,.18)',display:'flex',minHeight:420,maxHeight:'calc(100vh - 40px)'}} onClick={e=>e.stopPropagation()}>
-        <div style={{width:180,borderRight:'1px solid var(--line)',padding:16,display:'flex',flexDirection:'column',gap:6,background:'#fafaf8'}}>
+    <div style={{position:'fixed',inset:0,background:'rgba(15,15,15,.45)',backdropFilter:'blur(6px)',display:'flex',justifyContent:'center',alignItems:'flex-start',zIndex:80,padding:20,overflowY:'auto'}} onClick={onClose}>
+      <div style={{width:'min(760px,100%)',background:'#fff',borderRadius:16,boxShadow:'0 24px 48px rgba(0,0,0,.18)',display:'flex',minHeight:420,maxHeight:'calc(100vh - 40px)',overflow:'hidden',margin:'auto 0'}} onClick={e=>e.stopPropagation()}>
+        <div style={{width:180,borderRight:'1px solid var(--line)',padding:16,display:'flex',flexDirection:'column',gap:6,background:'#fafaf8',overflowY:'auto'}}>
           <div style={{fontSize:11,letterSpacing:'.08em',textTransform:'uppercase',color:'var(--faint)',fontWeight:700,marginBottom:6}}>Overview</div>
           {[
             ['general','General'],
@@ -36,7 +36,7 @@ function SettingsModal({ onClose }){
             <button key={id} onClick={()=>setTab(id)} style={{textAlign:'left',padding:'8px 10px',borderRadius:8,border:'none',background: tab===id?'#111':'transparent',color: tab===id?'#fff':'var(--muted)',fontWeight:600,fontSize:13,cursor:'pointer'}}>{label}</button>
           ))}
         </div>
-        <div style={{flex:1,padding:18,overflow:'auto'}}>
+        <div style={{flex:1,padding:18,overflowY:'auto',minHeight:0}}>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
             <strong style={{fontSize:15}}>Funnel settings</strong>
             <button className="icon-btn" style={{width:32,height:32}} onClick={onClose}>✕</button>
