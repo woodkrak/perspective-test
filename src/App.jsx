@@ -314,10 +314,18 @@ function PreviewModal({ onClose }){
         })}
         {page?.blocks?.length===0 && <div className="empty">Empty page — add blocks in the builder</div>}
       </div>
-      <div style={{display:'flex',gap:8,marginTop:12}}>
-        {idx>0 && <button className="chip" onClick={()=>setIdx(i=>Math.max(0,i-1))}>← Back</button>}
-        <button className="publish-btn" style={{marginLeft:'auto', background:buttonBg(theme)}} onClick={goNext}>{idx===funnel.pages.length-1?'See my result →':'Continue →'}</button>
-      </div>
+      {(()=>{
+        const blocksForNav = (page?.blocks||[]).map(id=> funnel.blocksById[id]).filter(Boolean)
+        const quizForNav = blocksForNav.find(b=> b.type==='quiz')
+        const isAutoPage = quizForNav ? ((quizForNav.children||[]).length===1 ? true : (quizForNav.autoAdvance ?? funnel.settings.autoAdvance)) : false
+        if(isAutoPage) return null
+        return (
+          <div style={{display:'flex',gap:8,marginTop:12}}>
+            {idx>0 && <button className="chip" onClick={()=>setIdx(i=>Math.max(0,i-1))}>← Back</button>}
+            <button className="publish-btn" style={{marginLeft:'auto', background:buttonBg(theme)}} onClick={goNext}>{idx===funnel.pages.length-1?'See my result →':'Continue →'}</button>
+          </div>
+        )
+      })()}
     </>
   )
 
