@@ -1774,9 +1774,10 @@ function InlineToolbar({ targetRef }){
 }
 
 function BlockRenderer({ blockId, depth=0, onSelect }){
-  const { funnel, dispatch, selectedBlockId, setSelectedBlockId } = useFunnel()
+  const { funnel, dispatch, selectedBlockId, setSelectedBlockId, device } = useFunnel()
   const block = funnel.blocksById[blockId]
   const theme = funnel.themes.find(t=>t.id===funnel.themeId) || funnel.themes[0]
+  const fontScale = device==='mobile' ? 1 : device==='tablet' ? 1.14 : 1.22
   const [editing,setEditing]=useState(false)
   const [editingAnswerId,setEditingAnswerId]=useState(null)
   const ref=useRef(null)
@@ -1832,11 +1833,13 @@ function BlockRenderer({ blockId, depth=0, onSelect }){
   const headlineFont = theme.font
   const bodyFont = theme.bodyFont||theme.font
   let inner=null
+  const baseSize = (typeof block.style.size==='number'? block.style.size : SIZE_PRESETS[block.style.size]||20)
+  const scaledSize = Math.round(baseSize * fontScale)
   if(block.type==='text'){
     const txtFont = block.style.font ? fontFamily : bodyFont
     inner = (
       <div style={{position:'relative'}}>
-        <div ref={ref} className="t-text" style={{ fontFamily: txtFont, color, lineHeight: block.style.lineHeight ?? 1.45, fontSize: (typeof block.style.size==='number'? block.style.size : SIZE_PRESETS[block.style.size]||20), fontWeight: block.style.bold?700:400, fontStyle:block.style.italic?'italic':'normal', textDecoration:block.style.underline?'underline':'none', textAlign:block.style.align }} {...contentEditableProps} dangerouslySetInnerHTML={{__html: interpolateTokens(block.content || '', scoreCtx)}} />
+        <div ref={ref} className="t-text" style={{ fontFamily: txtFont, color, lineHeight: block.style.lineHeight ?? 1.45, fontSize: scaledSize, fontWeight: block.style.bold?700:400, fontStyle:block.style.italic?'italic':'normal', textDecoration:block.style.underline?'underline':'none', textAlign:block.style.align }} {...contentEditableProps} dangerouslySetInnerHTML={{__html: interpolateTokens(block.content || '', scoreCtx)}} />
         {editing && <InlineToolbar targetRef={ref} />}
       </div>
     )
@@ -1909,7 +1912,7 @@ function BlockRenderer({ blockId, depth=0, onSelect }){
     inner = (
       <div className="quiz-wrap" style={{borderRadius: radius, fontFamily: headlineFont}}>
         <div style={{position:'relative'}}>
-          <div className="quiz-title" style={{fontFamily: headlineFont, color, lineHeight: block.style.lineHeight ?? 1.45, textAlign:block.style.align, fontSize: (typeof block.style.size==='number'? block.style.size : 20)}} ref={ref} {...(editing?contentEditableProps:{})} dangerouslySetInnerHTML={{__html: interpolateTokens(block.content?.question || '', scoreCtx)}}
+          <div className="quiz-title" style={{fontFamily: headlineFont, color, lineHeight: block.style.lineHeight ?? 1.45, textAlign:block.style.align, fontSize: scaledSize}} ref={ref} {...(editing?contentEditableProps:{})} dangerouslySetInnerHTML={{__html: interpolateTokens(block.content?.question || '', scoreCtx)}}
             onClick={e=>{
               e.stopPropagation()
               if(isSelected){
@@ -2088,14 +2091,17 @@ function Canvas({ previewBlock, setPreviewBlock, previewBlocks, setPreviewBlocks
   const theme = funnel.themes.find(t=>t.id===funnel.themeId) || funnel.themes[0]
   const [dragOverIdx,setDragOverIdx]=useState(null)
   const wrapRef=useRef(null)
+  const isLandscape = win.w > win.h
   const deviceChrome = {
     mobile:  { label:'Phone', w:390, h:844, pad:10, radius:44 },
-    tablet:  { label:'Tablet', w:834, h:1194, pad:14, radius:28 },
-    desktop: { label:'Browser', w:960, h:640, pad:0, radius:12 },
+    tablet:  isLandscape ? { label:'Tablet', w:1194, h:834, pad:14, radius:28 } : { label:'Tablet', w:834, h:1194, pad:14, radius:28 },
+    desktop: { label:'Browser', w:1120, h:700, pad:0, radius:12 },
   }[device] || { label:'Phone', w:390, h:844, pad:10, radius:44 }
   const { w, h, pad, radius } = deviceChrome
   const outerW = w + pad*2
   const outerH = h + pad*2
+  const contentMaxW = device==='mobile' ? '100%' : device==='tablet' ? '640px' : '720px'
+  const fontScale = device==='mobile' ? 1 : device==='tablet' ? 1.14 : 1.22
   const [win,setWin]=useState({ w: typeof window!=='undefined'? window.innerWidth:1280, h: typeof window!=='undefined'? window.innerHeight:800 })
   useEffect(()=>{
     const onR=()=> setWin({ w: window.innerWidth, h: window.innerHeight })
@@ -2170,8 +2176,9 @@ function Canvas({ previewBlock, setPreviewBlock, previewBlocks, setPreviewBlocks
             {funnel.settings.legal?.bannerText && (
               <div style={{background: theme.colors[2], color:'#fff', textAlign:'center', padding:'6px 10px', fontSize:11, fontWeight:600, flexShrink:0}}>{funnel.settings.legal.bannerText}</div>
             )}
-            <div className="canvas-inner" onDragOver={e=>e.preventDefault()} style={{flex:1, overflowY:'auto', padding: device==='mobile' ? '12px 16px 18px' : device==='tablet' ? '18px' : '20px', display:'flex', flexDirection:'column', gap:0}}>
-              {device==='mobile' && <div style={{width:36,height:4,background:'#e8e6e1',borderRadius:99,margin:'0 auto 10px', flexShrink:0}}/>}
+            <div className="canvas-inner" onDragOver={e=>e.preventDefault()} style={{flex:1, overflowY:'auto', padding: device==='mobile' ? '12px 16px 18px' : device==='tablet' ? '28px 32px 32px' : '32px 36px 36px', display:'flex', flexDirection:'column', gap:0, justifyContent: device==='mobile' ? 'flex-start' : 'center', alignItems:'center'}}>
+              {device==='mobile' && <div style={{width:36,height:4,background:'#e8e6e1',borderRadius:99,margin:'0 auto 10px', flexShrink:0, alignSelf:'stretch'}}/>}
+              <div style={{width:'100%', maxWidth: contentMaxW, display:'flex', flexDirection:'column', gap:0, flexShrink:0}}>
           {(page?.blocks||[]).map((bid, idx)=>(
             <div key={bid} data-block-id={bid}
               onDragOver={e=>{ e.preventDefault(); setDragOverIdx(idx)}}
@@ -2306,6 +2313,7 @@ function Canvas({ previewBlock, setPreviewBlock, previewBlocks, setPreviewBlocks
               </div>
             </div>
           )}
+              </div>
           <button className="add-block-btn" title="New Block" onClick={()=>{
             if(previewBlock || previewBlocks){
               const bar = document.querySelector('.confirm-bar')
