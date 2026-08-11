@@ -2091,6 +2091,7 @@ function Canvas({ previewBlock, setPreviewBlock, previewBlocks, setPreviewBlocks
   const theme = funnel.themes.find(t=>t.id===funnel.themeId) || funnel.themes[0]
   const [dragOverIdx,setDragOverIdx]=useState(null)
   const wrapRef=useRef(null)
+  const [win,setWin]=useState({ w: typeof window!=='undefined'? window.innerWidth:1280, h: typeof window!=='undefined'? window.innerHeight:800 })
   const isLandscape = win.w > win.h
   const deviceChrome = {
     mobile:  { label:'Phone', w:390, h:844, pad:10, radius:44 },
@@ -2102,7 +2103,6 @@ function Canvas({ previewBlock, setPreviewBlock, previewBlocks, setPreviewBlocks
   const outerH = h + pad*2
   const contentMaxW = device==='mobile' ? '100%' : device==='tablet' ? '640px' : '720px'
   const fontScale = device==='mobile' ? 1 : device==='tablet' ? 1.14 : 1.22
-  const [win,setWin]=useState({ w: typeof window!=='undefined'? window.innerWidth:1280, h: typeof window!=='undefined'? window.innerHeight:800 })
   useEffect(()=>{
     const onR=()=> setWin({ w: window.innerWidth, h: window.innerHeight })
     window.addEventListener('resize', onR)
