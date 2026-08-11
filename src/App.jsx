@@ -557,14 +557,17 @@ function LeftRail({ onRequestAdd }){
                 {name:'Trust', blocks:['image','list']},
               ].map(s=>(
                 <button key={s.name} className="section-card" onClick={()=>{
+                  const sectionBlocks = []
                   s.blocks.forEach(t=>{
                     if(t==='quiz'){
                       const q = makeBlock('quiz'); const ans = [1,2,3,4].map(()=>{ const a=makeBlock('answer'); a.parentId=q.id; return a })
-                      q.children=ans.map(a=>a.id); const extra={}; ans.forEach(a=> extra[a.id]=a); q._extra=extra; onRequestAdd(q, extra)
+                      q.children=ans.map(a=>a.id); const extra={}; ans.forEach(a=> extra[a.id]=a); q._extra=extra
+                      sectionBlocks.push(q)
                     } else {
-                      onRequestAdd(makeBlock(t), null)
+                      sectionBlocks.push(makeBlock(t))
                     }
                   })
+                  onRequestAdd(sectionBlocks, null)
                 }}>
                   <strong style={{fontSize:13}}>{s.name}</strong>
                   <div style={{fontSize:11,color:'var(--muted)'}}>{s.blocks.join(' · ')}</div>
@@ -600,7 +603,31 @@ function LeftRail({ onRequestAdd }){
             <div className="control-row">
               <div className="control-label">Font</div>
               <select className="select" value={t.font} onChange={e=>dispatch({type:'UPDATE_THEME', id:t.id, patch:{font:e.target.value}})}>
-                <option>Inter</option><option>Fraunces</option><option>JetBrains Mono</option>
+                <optgroup label="Sans — most popular">
+                  <option>Inter</option>
+                  <option>DM Sans</option>
+                  <option>Outfit</option>
+                  <option>Space Grotesk</option>
+                  <option>Plus Jakarta Sans</option>
+                  <option>Sora</option>
+                </optgroup>
+                <optgroup label="Serif — editorial">
+                  <option>Fraunces</option>
+                  <option>Playfair Display</option>
+                  <option>Newsreader</option>
+                  <option>Cormorant Garamond</option>
+                  <option>Instrument Serif</option>
+                  <option>Libre Baskerville</option>
+                </optgroup>
+                <optgroup label="Whimsical / Display">
+                  <option>Caveat</option>
+                  <option>Pacifico</option>
+                  <option>Fredoka</option>
+                  <option>Bricolage Grotesque</option>
+                </optgroup>
+                <optgroup label="Mono">
+                  <option>JetBrains Mono</option>
+                </optgroup>
               </select>
             </div>
             <div className="control-row">
@@ -847,9 +874,31 @@ function PropertyPanel({ block, theme, funnel }){
           <div className="control-row">
             <div className="control-label">Font</div>
             <select className="select" value={block.style.font || theme.font} onChange={e=>dispatch({type:'UPDATE_BLOCK_STYLE', id:block.id, patch:{ font: e.target.value }})}>
-              <option value="Inter">Inter</option>
-              <option value="Fraunces">Fraunces</option>
-              <option value="JetBrains Mono">JetBrains Mono</option>
+              <optgroup label="Sans — most popular">
+                <option value="Inter">Inter</option>
+                <option value="DM Sans">DM Sans</option>
+                <option value="Outfit">Outfit</option>
+                <option value="Space Grotesk">Space Grotesk</option>
+                <option value="Plus Jakarta Sans">Plus Jakarta Sans</option>
+                <option value="Sora">Sora</option>
+              </optgroup>
+              <optgroup label="Serif — editorial">
+                <option value="Fraunces">Fraunces</option>
+                <option value="Playfair Display">Playfair Display</option>
+                <option value="Newsreader">Newsreader</option>
+                <option value="Cormorant Garamond">Cormorant Garamond</option>
+                <option value="Instrument Serif">Instrument Serif</option>
+                <option value="Libre Baskerville">Libre Baskerville</option>
+              </optgroup>
+              <optgroup label="Whimsical / Display">
+                <option value="Caveat">Caveat — handwritten</option>
+                <option value="Pacifico">Pacifico — brush</option>
+                <option value="Fredoka">Fredoka — bouncy</option>
+                <option value="Bricolage Grotesque">Bricolage Grotesque — quirky</option>
+              </optgroup>
+              <optgroup label="Mono">
+                <option value="JetBrains Mono">JetBrains Mono</option>
+              </optgroup>
             </select>
             <div style={{fontSize:11,color:'var(--faint)'}}>Theme default: {theme.font}</div>
           </div>
@@ -1468,7 +1517,7 @@ function FloatingToolbar({ selectedId }){
   )
 }
 
-function Canvas({ previewBlock, setPreviewBlock, safeSetPreview }){
+function Canvas({ previewBlock, setPreviewBlock, previewBlocks, setPreviewBlocks, safeSetPreview }){
   const { funnel, selectedPageId, selectedBlockId, setSelectedBlockId, device, setDevice, dispatch, canUndo, canRedo, undo, redo, makeBlock } = useFunnel()
   const page = funnel.pages.find(p=>p.id===selectedPageId) || funnel.pages[0]
   const theme = funnel.themes.find(t=>t.id===funnel.themeId) || funnel.themes[0]
@@ -1575,8 +1624,8 @@ function Canvas({ previewBlock, setPreviewBlock, safeSetPreview }){
             <div className="block preview" style={{position:'relative', marginBottom:24}}>
               <span className="badge" style={{opacity:1}}>Preview</span>
               <div style={{padding:'8px 0', color:'var(--muted)', fontSize:13}}>
-                {previewBlock.type==='text' && <div style={{color:'#0f0f0f'}}>{previewBlock.content}</div>}
-                {previewBlock.type==='button' && <button className="btn btn-filled" style={{background:buttonBg(theme)}}>{previewBlock.content}</button>}
+                {previewBlock.type==='text' && <div style={{color:'#0f0f0f'}} dangerouslySetInnerHTML={{__html: previewBlock.content}} />}
+                {previewBlock.type==='button' && <button className="btn btn-filled" style={{background:buttonBg(theme)}} dangerouslySetInnerHTML={{__html: previewBlock.content}} />}
                 {previewBlock.type==='image' && <div className="img-wrap"><img src={previewBlock.content} alt="" /></div>}
                 {previewBlock.type==='reviews' && <div style={{textAlign:'center',padding:8,border:'1px solid var(--line)',borderRadius:8,background:'#fff'}}><div style={{color:'#f59e0b'}}>{'★'.repeat(5)}</div><div style={{fontSize:12,marginTop:4, color:'#111'}}>{previewBlock.content?.text || 'Reviews preview'}</div></div>}
                 {previewBlock.type==='logo' && <div style={{display:'flex',gap:8,justifyContent:'center',flexWrap:'wrap'}}>{(previewBlock.content?.logos||['ACME','Globex']).map((l,i)=><span key={i} style={{fontSize:11,padding:'4px 8px',background:'#f5f4f1',borderRadius:6,border:'1px solid var(--line)'}}>{l}</span>)}</div>}
@@ -1605,7 +1654,6 @@ function Canvas({ previewBlock, setPreviewBlock, safeSetPreview }){
                 <button className="confirm-yes" title="Confirm (save)" onClick={()=>{
                   const extra = previewBlock._extra || null
                   const toAdd = { ...previewBlock }; delete toAdd._extra
-                  // ensure page exists — use current selected page or first
                   const targetPageId = page?.id || funnel.pages[0]?.id
                   if(!targetPageId) return
                   dispatch({type:'ADD_BLOCK', pageId: targetPageId, block: toAdd, extraBlocks: extra})
@@ -1616,8 +1664,60 @@ function Canvas({ previewBlock, setPreviewBlock, safeSetPreview }){
               </div>
             </div>
           )}
+          {previewBlocks && (
+            <div className="block preview" style={{position:'relative', marginBottom:24}}>
+              <span className="badge" style={{opacity:1}}>Preview — {previewBlocks.length} blocks</span>
+              <div style={{padding:'8px 0', display:'flex', flexDirection:'column', gap:8}}>
+                {previewBlocks.map(pb=>(
+                  <div key={pb.id} style={{border:'1px dashed #d6d2cc', borderRadius:8, padding:8, background:'#fff'}}>
+                    {pb.type==='text' && <div style={{color:'#0f0f0f'}} dangerouslySetInnerHTML={{__html: pb.content}} />}
+                    {pb.type==='button' && <button className="btn btn-filled" style={{background:buttonBg(theme), display:'inline-flex'}} dangerouslySetInnerHTML={{__html: pb.content}} />}
+                    {pb.type==='image' && <div className="img-wrap" style={{borderRadius:8}}><img src={pb.content} alt="" /></div>}
+                    {pb.type==='list' && <ul className="list" style={{color:'#111', margin:0}}>{(Array.isArray(pb.content)?pb.content:[]).slice(0,3).map((li,i)=><li key={i} style={{fontSize:13}}>{li}</li>)}</ul>}
+                    {pb.type==='divider' && <div className="divider"/>}
+                    {pb.type==='reviews' && <div style={{textAlign:'center',padding:6,border:'1px solid var(--line)',borderRadius:8,background:'#fff'}}><div style={{color:'#f59e0b',fontSize:12}}>{'★'.repeat(5)}</div><div style={{fontSize:11,marginTop:2,color:'#111'}}>{pb.content?.text || 'Reviews'}</div></div>}
+                    {pb.type==='logo' && <div style={{display:'flex',gap:6,justifyContent:'center',flexWrap:'wrap'}}>{(pb.content?.logos||['ACME','Globex']).slice(0,4).map((l,i)=><span key={i} style={{fontSize:10,padding:'3px 6px',background:'#f5f4f1',borderRadius:6,border:'1px solid var(--line)'}}>{l}</span>)}</div>}
+                    {pb.type==='testimonial' && <div style={{borderLeft:'3px solid #4a4a4a',padding:'4px 8px',fontStyle:'italic',background:'#fcfcfa',borderRadius:6,color:'#111',fontSize:12}}>{pb.content?.text || '“Amazing”'}</div>}
+                    {pb.type==='slider' && <div className="img-wrap"><img src={pb.content} alt="" /></div>}
+                    {pb.type==='graphic' && <div className="img-wrap"><img src={pb.content} alt="" /></div>}
+                    {pb.type==='webinar' && <div style={{fontWeight:600,color:'#111',fontSize:12}}>{pb.content?.title || 'Webinar'}</div>}
+                    {pb.type==='faq' && <div style={{fontSize:11,color:'#111'}}>FAQ — {Array.isArray(pb.content)?pb.content.length:2} items</div>}
+                    {pb.type==='countdown' && <div style={{textAlign:'center',background:'#111',color:'#fff',padding:6,borderRadius:6,fontSize:12}}>02 : 14 : 33</div>}
+                    {pb.type==='loader' && <div style={{textAlign:'center',color:'#111',fontSize:12}}>Loading…</div>}
+                    {pb.type==='embed' && <div style={{textAlign:'center',padding:6,border:'1px dashed var(--line)',borderRadius:6,color:'#111',fontSize:11}}>{pb.content?.provider || 'Embed'}</div>}
+                    {pb.type==='video' && <div style={{textAlign:'center',padding:6,background:'#000',color:'#fff',borderRadius:6,fontSize:11}}>Video</div>}
+                    {pb.type==='form' && <div style={{border:'1px solid var(--line)',borderRadius:6,padding:6,background:'#fafaf8'}}><div style={{fontSize:11,fontWeight:600}}>{pb.content?.label||'Email'}</div><div style={{height:28,background:'#fff',border:'1px solid var(--line)',borderRadius:6,marginTop:4}} /></div>}
+                    {pb.type==='quiz' && (
+                      <div>
+                        <div style={{fontWeight:700,color:'#111',fontSize:13}} dangerouslySetInnerHTML={{__html: pb.content?.question || 'Question'}} />
+                        <div style={{marginTop:6, display:'grid', gridTemplateColumns:'1fr 1fr', gap:6}}>
+                          {(pb.children||[]).map(cid=> <div key={cid} style={{padding:'6px 8px',fontSize:11,background:'#f5f4f1',border:'1px solid var(--line)',borderRadius:6,color:'#111'}}>{ (pb._extra && pb._extra[cid]?.content) || 'Option'}</div>)}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <div className="confirm-bar vertical">
+                <button className="confirm-yes" title="Confirm section (add all blocks)" onClick={()=>{
+                  const targetPageId = page?.id || funnel.pages[0]?.id
+                  if(!targetPageId) return
+                  let firstId=null
+                  previewBlocks.forEach(pb=>{
+                    const extra = pb._extra || null
+                    const toAdd = { ...pb }; delete toAdd._extra
+                    if(!firstId) firstId=toAdd.id
+                    dispatch({type:'ADD_BLOCK', pageId: targetPageId, block: toAdd, extraBlocks: extra})
+                  })
+                  if(firstId) setSelectedBlockId(firstId)
+                  setPreviewBlocks(null)
+                }}>✓</button>
+                <button className="confirm-no" title="Cancel" onClick={()=>setPreviewBlocks(null)}>✕</button>
+              </div>
+            </div>
+          )}
           <button className="add-block-btn" title="New Block" onClick={()=>{
-            if(previewBlock){
+            if(previewBlock || previewBlocks){
               const bar = document.querySelector('.confirm-bar')
               if(bar){ bar.animate([{transform:'translateX(-50%) scale(1)'},{transform:'translateX(-50%) scale(1.08)'},{transform:'translateX(-50%) scale(1)'}],{duration:300}) }
               return
@@ -1647,13 +1747,18 @@ function Shell(){
   const { funnel, published } = useFunnel()
   const theme = funnel.themes.find(t=>t.id===funnel.themeId) || funnel.themes[0]
   const [previewBlock,setPreviewBlock]=useState(null)
+  const [previewBlocks,setPreviewBlocks]=useState(null)
   const safeSetPreview = (blk)=>{
-    if(previewBlock && blk){
+    if((previewBlock || previewBlocks) && blk){
       const bar = document.querySelector('.confirm-bar')
       if(bar){ bar.animate([{transform:'translateX(-50%) scale(1)'},{transform:'translateX(-50%) scale(1.08)'},{transform:'translateX(-50%) scale(1)'}],{duration:300}) }
       return
     }
-    setPreviewBlock(blk)
+    if(Array.isArray(blk)){
+      setPreviewBlocks(blk)
+    } else {
+      setPreviewBlock(blk)
+    }
   }
   useEffect(()=>{
     document.documentElement.style.setProperty('--theme-bg', theme.colors[0])
@@ -1667,10 +1772,18 @@ function Shell(){
       <TopBar />
       <div className="main">
         <LeftRail onRequestAdd={(blk, extra)=>{
-          if(extra) blk._extra=extra
-          safeSetPreview(blk)
+          if(Array.isArray(blk)){
+            // attach extra map to any quiz blocks if provided (sections don't use separate extra)
+            if(extra && Object.keys(extra).length){
+              blk.forEach(b=>{ if(b.type==='quiz' && !b._extra) b._extra = extra })
+            }
+            safeSetPreview(blk)
+          } else {
+            if(extra) blk._extra=extra
+            safeSetPreview(blk)
+          }
         }} />
-        <Canvas previewBlock={previewBlock} setPreviewBlock={setPreviewBlock} safeSetPreview={safeSetPreview} />
+        <Canvas previewBlock={previewBlock} setPreviewBlock={setPreviewBlock} previewBlocks={previewBlocks} setPreviewBlocks={setPreviewBlocks} safeSetPreview={safeSetPreview} />
       </div>
       {published && <div className="toast">Funnel is live — draft vs. live split active</div>}
     </div>
