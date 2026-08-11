@@ -251,8 +251,9 @@ function PreviewModal({ onClose }){
         {(page?.blocks||[]).map(bid=>{
           const b = funnel.blocksById[bid]; if(!b) return null
           const ctx = { brandName: funnel.settings.brandName, quizName: funnel.name, funnelName: funnel.name, score: collectScoreAndTags(funnel, answers).score, firstName:'there', email:'' }
-          if(b.type==='text') return <div key={bid} style={{fontFamily: theme.bodyFont||theme.font, fontSize: b.style.size, fontWeight: b.style.bold?700:400, textAlign:b.style.align}} dangerouslySetInnerHTML={{__html: interpolateTokens(b.content, ctx)}} />
+          if(b.type==='text') { const base = (typeof b.style.size==='number'? b.style.size : 20); const s = Math.round(base * (device==='mobile'?1:device==='tablet'?1.32:1.48)); return <div key={bid} style={{fontFamily: theme.bodyFont||theme.font, fontSize: s, fontWeight: b.style.bold?700:400, textAlign:b.style.align}} dangerouslySetInnerHTML={{__html: interpolateTokens(b.content, ctx)}} /> }
           if(b.type==='button') return <button key={bid} className="btn btn-filled" style={{fontFamily: theme.font, background:buttonBg(theme),alignSelf: b.style.align==='center'?'center':'stretch'}} onClick={goNext} dangerouslySetInnerHTML={{__html: interpolateTokens(b.content, ctx)}} />
+          if(b.type==='image') return <div key={bid} className="img-wrap" style={{borderRadius:12, overflow:'hidden', maxHeight: device==='mobile'?'none':device==='tablet'?'280px':'320px'}}><img src={b.content} alt="" style={{width:'100%',height:'auto',maxHeight: device==='mobile'?'none':device==='tablet'?'280px':'320px', objectFit:'cover'}} /></div>
           if(b.type==='image') return <div key={bid} className="img-wrap"><img src={b.content} alt="" /></div>
           if(b.type==='quiz') {
             const q = b
@@ -273,7 +274,7 @@ function PreviewModal({ onClose }){
             }
             return (
               <div key={bid} className="quiz-wrap">
-                <div style={{fontFamily: theme.font, fontWeight:700,marginBottom:10}} dangerouslySetInnerHTML={{__html: interpolateTokens(q.content?.question||'', ctx)}} />
+                <div style={{fontFamily: theme.font, fontWeight:700,marginBottom:10, fontSize: Math.round(((typeof q.style?.size==='number'?q.style.size:22))* (device==='mobile'?1:device==='tablet'?1.32:1.48))}} dangerouslySetInnerHTML={{__html: interpolateTokens(q.content?.question||'', ctx)}} />
                 <div className="quiz-grid" style={{gridTemplateColumns: device==='mobile'?'1fr':'1fr 1fr'}}>
                   {(q.children||[]).map(cid=>{
                     const ans = funnel.blocksById[cid]
@@ -1777,7 +1778,7 @@ function BlockRenderer({ blockId, depth=0, onSelect }){
   const { funnel, dispatch, selectedBlockId, setSelectedBlockId, device } = useFunnel()
   const block = funnel.blocksById[blockId]
   const theme = funnel.themes.find(t=>t.id===funnel.themeId) || funnel.themes[0]
-  const fontScale = device==='mobile' ? 1 : device==='tablet' ? 1.14 : 1.22
+  const fontScale = device==='mobile' ? 1 : device==='tablet' ? 1.32 : 1.48
   const [editing,setEditing]=useState(false)
   const [editingAnswerId,setEditingAnswerId]=useState(null)
   const ref=useRef(null)
@@ -1850,7 +1851,8 @@ function BlockRenderer({ blockId, depth=0, onSelect }){
       inner = <div style={{fontSize:48, textAlign:'center', padding:20, color}}>{String(block.content).slice(5)}</div>
     } else {
       const hasShadow = block.dropShadow ?? true
-      inner = <div className="img-wrap" style={{borderRadius: radius, boxShadow: hasShadow ? '0 4px 16px rgba(0,0,0,.08), 0 1px 3px rgba(0,0,0,.05)' : 'none', overflow:'hidden'}}><img src={block.content} alt="" draggable={false} style={{display:'block', width:'100%', height:'auto'}} /></div>
+      const imgMaxH = device==='mobile' ? 'none' : device==='tablet' ? '280px' : '320px'
+      inner = <div className="img-wrap" style={{borderRadius: radius, boxShadow: hasShadow ? '0 4px 16px rgba(0,0,0,.08), 0 1px 3px rgba(0,0,0,.05)' : 'none', overflow:'hidden', maxHeight: imgMaxH}}><img src={block.content} alt="" draggable={false} style={{display:'block', width:'100%', height:'auto', maxHeight: imgMaxH, objectFit:'cover'}} /></div>
     }
   } else if(block.type==='divider'){
     inner = <div className="divider" />
@@ -2101,8 +2103,8 @@ function Canvas({ previewBlock, setPreviewBlock, previewBlocks, setPreviewBlocks
   const { w, h, pad, radius } = deviceChrome
   const outerW = w + pad*2
   const outerH = h + pad*2
-  const contentMaxW = device==='mobile' ? '100%' : device==='tablet' ? '640px' : '720px'
-  const fontScale = device==='mobile' ? 1 : device==='tablet' ? 1.14 : 1.22
+  const contentMaxW = device==='mobile' ? '100%' : device==='tablet' ? '680px' : '760px'
+  const fontScale = device==='mobile' ? 1 : device==='tablet' ? 1.32 : 1.48
   useEffect(()=>{
     const onR=()=> setWin({ w: window.innerWidth, h: window.innerHeight })
     window.addEventListener('resize', onR)
@@ -2176,7 +2178,7 @@ function Canvas({ previewBlock, setPreviewBlock, previewBlocks, setPreviewBlocks
             {funnel.settings.legal?.bannerText && (
               <div style={{background: theme.colors[2], color:'#fff', textAlign:'center', padding:'6px 10px', fontSize:11, fontWeight:600, flexShrink:0}}>{funnel.settings.legal.bannerText}</div>
             )}
-            <div className="canvas-inner" onDragOver={e=>e.preventDefault()} style={{flex:1, overflowY:'auto', padding: device==='mobile' ? '12px 16px 18px' : device==='tablet' ? '28px 32px 32px' : '32px 36px 36px', display:'flex', flexDirection:'column', gap:0, justifyContent: device==='mobile' ? 'flex-start' : 'center', alignItems:'center'}}>
+            <div className="canvas-inner" onDragOver={e=>e.preventDefault()} style={{flex:1, overflowY:'auto', padding: device==='mobile' ? '12px 16px 18px' : device==='tablet' ? '28px 32px 32px' : '32px 40px 40px', display:'flex', flexDirection:'column', gap:0, justifyContent: device==='mobile' ? 'flex-start' : 'safe center', alignItems:'center'}}>
               {device==='mobile' && <div style={{width:36,height:4,background:'#e8e6e1',borderRadius:99,margin:'0 auto 10px', flexShrink:0, alignSelf:'stretch'}}/>}
               <div style={{width:'100%', maxWidth: contentMaxW, display:'flex', flexDirection:'column', gap:0, flexShrink:0}}>
           {(page?.blocks||[]).map((bid, idx)=>(
