@@ -12,18 +12,47 @@ function LucideIcon({ name, size=20 }){
   return <Icon size={size} strokeWidth={2} />
 }
 function Confetti({ pageId }){
-  const colors = ['#f59e0b','#ec4899','#8b5cf6','#22c55e','#06b6d4','#f43f5e','#eab308']
+  const colors = ['#f59e0b','#ec4899','#8b5cf6','#22c55e','#06b6d4','#f43f5e','#eab308','#a78bfa']
+  const emojis = ['🎉','✨','🎊','💫','🌟']
   return (
     <div key={pageId} style={{position:'absolute', inset:0, pointerEvents:'none', overflow:'hidden'}}>
-      {Array.from({length:28}, (_,i)=>{
-        const left = (i*37 + 7) % 100
-        const delay = (i % 7) * 0.08
-        const dur = 1.6 + (i % 3) * 0.25
-        const rot = (i*53) % 360
-        const w = 7 + (i%3)*2
-        const h = 10 + (i%2)*4
+      {/* burst ring */}
+      <div style={{position:'absolute', left:'50%', top:28, width:0, height:0, pointerEvents:'none'}}>
+        {Array.from({length:14}, (_,i)=>{
+          const angle = (i/14)*360
+          const dist = 44 + (i%3)*18
+          const delay = (i%5)*0.04
+          const color = colors[i % colors.length]
+          return <div key={`b-${i}`} style={{position:'absolute', left:0, top:0, width:8, height:8, background:color, borderRadius:99, transform:`rotate(${angle}deg) translateX(0)`, animation:`confettiBurst 0.65s ${delay}s cubic-bezier(.22,.61,.36,1) forwards`, '--dist': `${dist}px`, '--angle': `${angle}deg`}} />
+        })}
+      </div>
+      {Array.from({length:42}, (_,i)=>{
+        const left = (i*47 + 11) % 100
+        const delay = (i % 9) * 0.09 + Math.random()*0.07
+        const dur = 1.9 + (i % 4) * 0.22 + Math.random()*0.3
+        const rot = (i*61) % 360
+        const rotY = (i*37) % 360
+        const drift = ((i % 2===0 ? 1 : -1) * (18 + (i%5)*6))
+        const w = 7 + (i%3)*3
+        const h = 10 + (i%3)*4
         const color = colors[i % colors.length]
-        return <div key={i} style={{position:'absolute', left:`${left}%`, top:-14, width:w, height:h, background:color, borderRadius: i%2===0?2:99, transform:`rotate(${rot}deg)`, animation:`confettiFall ${dur}s ${delay}s ease-in forwards`}} />
+        const isEmoji = i % 11 === 0
+        const emoji = emojis[i % emojis.length]
+        const isCircle = i % 3 === 0
+        const isRibbon = i % 7 === 0
+        if(isEmoji){
+          return <div key={i} style={{position:'absolute', left:`${left}%`, top:-18, fontSize: 14 + (i%3)*3, lineHeight:1, filter:'drop-shadow(0 2px 4px rgba(0,0,0,.15))', animation:`confettiFall ${dur}s ${delay}s cubic-bezier(.25,.46,.45,.94) forwards`, '--drift': `${drift}px`}}>{emoji}</div>
+        }
+        return (
+          <div key={i} style={{
+            position:'absolute', left:`${left}%`, top:-14, width: isRibbon? 10: w, height: isRibbon? 22: h,
+            background: color, borderRadius: isCircle?99 : isRibbon?3 : 2,
+            transform:`rotate(${rot}deg) rotateY(${rotY}deg)`,
+            boxShadow: '0 1px 3px rgba(0,0,0,.12)',
+            animation:`confettiFall ${dur}s ${delay}s cubic-bezier(.25,.46,.45,.94) forwards`,
+            '--drift': `${drift}px`
+          }} />
+        )
       })}
     </div>
   )
