@@ -15,7 +15,7 @@ function Confetti({ pageId }){
   const colors = ['#f59e0b','#ec4899','#8b5cf6','#22c55e','#06b6d4','#f43f5e','#eab308','#a78bfa','#06b6d4','#f97316']
   const emojis = ['🎉','✨','🎊','💫','🌟','🎈']
   return (
-    <div key={pageId} style={{position:'absolute', inset:0, pointerEvents:'none', overflow:'hidden'}}>
+    <div key={pageId} style={{position:'absolute', inset:0, pointerEvents:'none', overflow:'hidden', zIndex:20}}>
       {/* central pop */}
       <div style={{position:'absolute', left:'50%', top:22, width:0, height:0, pointerEvents:'none'}}>
         {Array.from({length:22}, (_,i)=>{
