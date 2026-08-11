@@ -1,0 +1,276 @@
+
+
+---
+
+# Build Spec Roadmap — Perspective-Style Funnel/Quiz Builder
+
+## 1. What this product actually is
+
+It's a **mobile-first, page-sequence funnel builder**, not a generic website builder. The mental model is a *deck of pages* a visitor walks through, where every interactive element can branch the visitor to a different page or tag them with a "Result." The quiz is one block type inside a broader funnel engine that also carries email automation, CRM, and analytics.
+
+The single most important design decision to copy: **the canvas is the only place you manipulate structure, and the left rail is the only place you manipulate properties.** There are no floating property popovers, no right-hand inspector, no rich-text bubble menu. That's why it feels clean.
+
+---
+
+## 2. Application shell / information architecture
+
+Three fixed regions plus two floating layers.
+
+**Top bar (global, 64px):** Home/workspace link · funnel name · module tabs (Funnel / Metrics / Contacts / Apps) · preview eye ("Preview funnel without recording data") · settings gear · primary **Publish** CTA.
+
+**Left rail (~390px, fixed):** Two-state segmented control — **Overview** and **Design**. This rail is context-swapping, which is the core trick:
+
+| Selection state | Overview tab shows | Design tab shows |
+|---|---|---|
+| Nothing selected | Pages / Results / Messages tree | Theme library |
+| Element selected | (unchanged tree) | **Element property panel**, auto-focused |
+| "+" pressed on canvas | **Add section** library (replaces whole rail) | — |
+| Theme edit opened | **Theme editor**, replaces rail, exits via "Back to Overview" | — |
+
+Selecting an element automatically flips the rail to **Design**. Escape deselects and flips back to Overview. Watch this: it's a real footgun — after Escape the rail re-renders and a queued click lands on whatever now occupies those coordinates. That's exactly how I accidentally created a page. **Debounce or block pointer events for ~150ms after a rail context swap.**
+
+**Canvas (center, flexible):** Device-framed live-rendered page. Not an iframe — real DOM in the host document, which is why inline editing is native `contenteditable`.
+
+**Floating layer A — element toolbar:** vertical pill, docked to the right edge of the selected element.
+**Floating layer B — viewport controls:** bottom-right, device toggle + redo + undo.
+
+---
+
+## 3. The five interaction patterns to replicate
+
+### 3.1 Progressive click-to-edit (the headline behavior)
+
+Three distinct states per element:
+
+1. **Hover** — dashed 1px outline + **grey** type badge, top-left, outside the box.
+2. **Selected (1st click)** — solid blue 2px outline + **blue** type badge; property panel loads; element toolbar appears; `componentId` is pushed into the URL query string.
+3. **Editing (2nd click on a text-bearing element)** — caret placed at click position; native text selection; typing replaces content live.
+
+The badge always names the semantic type: `Text`, `Button`, `Image`, `Quiz`, `Answer`. Deep-linkable selection via `?pageId=…&componentId=…` is a small feature with big payoff — support it from day one.
+
+### 3.2 Nested / drill-down selection
+
+Clicking a quiz answer card's image selects the child `Image`; clicking its label selects the child `Answer`. Each level gets its own panel and its own (reduced) toolbar — children lose the "add block underneath" and "copy" affordances and keep only duplicate/move/delete. Click-through goes one level deeper per click rather than requiring modifier keys.
+
+### 3.3 The element toolbar ("size menu")
+
+Five actions, vertically stacked, each with a tooltip that **names the element type dynamically**:
+
+| Icon | Label | Shortcut |
+|---|---|---|
+| `+` | "Add new block underneath *{Type}*" | — |
+| `≡` | "Move *{Type}*" (drag handle) | — |
+| ⧉ | "Duplicate *{Type}*" | ⌘D |
+| 📋 | "Copy *{Type}*" | ⌘C |
+| 🗑 | "Delete *{Type}*" | Del |
+
+Dragging the `≡` handle reorders blocks vertically with live reflow. Copy/paste is cross-page (the paste target appears in the toolbar once the clipboard is populated), which is a genuinely useful power feature.
+
+### 3.4 The "+" add-section flow
+
+A large circular `+` sits permanently at the bottom of the canvas (labeled *New Block* on hover); the toolbar `+` does the same thing but inserts relative to the selection instead of appending.
+
+Pressing it takes over the **entire left rail** with a two-tier library:
+
+- **Basic blocks** and **Interactive blocks** — each opens a *second* flyout column of visual tiles.
+- **Sections** — Hero, Product, Call to action, About us, Quiz, Team, Testimonials, Trust — each opens a flyout of **full-composition screenshot templates** (multi-block prebuilt layouts).
+
+The critical detail: **insertion is a two-step commit.** Choosing a block renders it live on the canvas with a dashed blue outline and a floating ✓ / ✗ pair. Nothing is written until ✓. On confirm, the block is inserted, auto-selected, and if it's text-bearing the caret is already placed. Try-before-you-buy on the real canvas beats any thumbnail preview.
+
+### 3.5 Direct manipulation everywhere else
+
+Page rename is inline in the tree (pencil + editable label + checkmark). Sliders apply live. Color changes apply live. No modal-and-save except for logic, which genuinely needs it.
+
+---
+
+## 4. Component inventory
+
+**Core Components:** AI Block *(Beta)*, Text, Button, Image, List, Divider, Logo Bar, Reviews
+**Media Elements:** Video, Testimonial, Slider, Graphic
+**Informative Blocks:** Webinar, FAQ, Countdown, Loader
+**Embed Blocks:** Kununu, Trustpilot, Proven Expert, Google Maps, HTML
+**Interactive — Questions:** Multiple-Choice, Choice, Quiz, Video question
+**Interactive — Forms:** Form, Appointment, Upload, Message, Date, Dropdown, Payment
+
+For a v1, ship Text, Button, Image, Divider, List, Video, plus Choice / Multiple-Choice / Quiz / Form. The embed blocks are thin iframe wrappers and can be a single generic "Embed" primitive with presets.
+
+---
+
+## 5. Property panel schema
+
+Panels are composed from a small set of reusable control rows, which is why every element feels consistent.
+
+**Shared controls:** size stepper (`S · M · L · XL · •••`), bold/italic/underline, alignment, text color, background color, spacing sliders, personalization, tracking ID.
+
+The **size stepper** is worth copying exactly. Four named presets plus a `•••` escape hatch that opens the full ramp — **14, 16 (S), 18, 20 (M), 24 (L), 30 (XL), 40, 48, 64px**. When the current value isn't a preset, `•••` renders as the active state. Semantic presets for 90% of users, raw values for the rest, zero extra UI.
+
+**Alignment** is a 2-state cycling toggle (center ⇄ left), not a 3-button group — a deliberate simplification.
+
+**Per-type panels:**
+
+- **Text** → size · B/I/U · align · color · personalization · Background (top spacing, bottom spacing, bg color)
+- **Button** → size · B/I/U · align · text color · fill color · **Linking** (target + tracking ID) · **Advanced** (Filled/Outline · Personalization · Animation · "Take full width on Desktop") · Background
+- **Image** → source mode toggle (**Media library** ⇄ **Icon library**) · color tint · crop. Media mode: folder scope dropdown ("All media"), search, drag-drop zone (*Max 10MB; .png .jpg .webp .gif*), asset grid. Icon mode: color picker, search, "Animated icons" toggle, icon grid.
+- **Quiz (question container)** → align · color · personalization · **"Reveal answers"** toggle (shows aggregate answer distribution to the visitor as social proof) · Tracking ID (`question_5l77fz`) · Background
+- **Answer (option)** → size · B/I/U · text color · background color · **Linking** (next-page target, **Result assignment**, tracking ID)
+
+⚠️ **UX bug to avoid:** the Image source-mode toggle destroys the current image the instant you click "Icon" — no confirmation, no preservation. Cache the previous source so toggling back restores it.
+
+---
+
+## 6. The color system
+
+Every color swatch opens the same three-tab picker:
+
+- **Palette** — the 4 theme colors, with a "Using theme color" badge indicating the value is *bound to the token*, not copied.
+- **Solid** — HSV field + hue slider + hex input.
+- **Gradient** — gradient builder.
+
+Token-binding is the important part: elements reference theme slots by default, so a theme swap re-skins the entire funnel. Model color as a tagged union: `{ kind: 'token', slot: 1|2|3|4 } | { kind: 'solid', hex } | { kind: 'gradient', … }`.
+
+---
+
+## 7. Theming
+
+**Design tab (nothing selected)** → "Your themes" (editable + deletable, `+` to create) and "Perspective themes" (a large read-only starter library; editing one forks it as *"{Name} copy"*).
+
+**Theme editor:** Name · Font (searchable, Google Fonts) · **Colors** (exactly 4 slots) · **Rounded corners** (4 discrete levels) · **Page transition** (6 options including none) · "Disable animation on page load" toggle · "Back to Overview".
+
+While editing, the canvas renders a **grey skeleton wireframe** rather than the real content — it isolates you from copy and forces judgment on structure and color. Nice touch, cheap to build.
+
+Four colors is a strong constraint. Don't expand it; it's what makes every generated funnel look coherent.
+
+---
+
+## 8. Logic & branching engine
+
+This is the real product. Every interactive element carries a `Linking` config.
+
+**Simple mode** — "Always link to", one target. Targets are grouped:
+*General:* Next Page · External URL · Scroll to Block. *Pages:* every numbered page. *Results:* every lettered result page.
+
+**Rule mode** — "+ Add rule" expands into a full conditional builder:
+
+```
+Rule
+  When   [source]  →  grouped by page, listing every
+                      interactive element as a variable
+  [operator]        →  auto-derived from source type
+                      (e.g. appointment → "Is booked")
+  [value]           →  True / False / enumerated answer
+  + Add Condition   →  AND-chaining
+  Then go to        →  [target]
++ Add rule          →  ordered, first-match-wins
+In all other cases  →  [fallback target]
+Reset · Cancel · Save
+```
+
+Two things to internalize. First, **the operator is not user-chosen** — it's inferred from the source variable's type. That eliminates the single biggest source of confusion in rule builders. Second, **conditions can reference any element on any *prior* page**, not just the current one, which means answers are funnel-scoped variables addressed by their tracking ID.
+
+**Result assignment** is the separate, orthogonal mechanism: each Answer can point at a Result page ("No result" by default). Result pages are always terminal, and visitors are routed to whichever they accumulated. Branching = *where you go next*; results = *what you're classified as*. Keep these two systems separate in the data model.
+
+**Tracking IDs** (`question_5l77fz`, `button_click_vtv8i3`) are auto-generated, user-editable, and serve triple duty: analytics event names, logic variable handles, and integration field keys.
+
+---
+
+## 9. Page tree, results, messages
+
+The Overview tree has three zones, each with an ⓘ popover carrying explanatory copy plus deep links to docs — a good, low-cost onboarding pattern.
+
+**Pages** (numbered 1, 2, 3…) — per-page `•••` menu: Rename page · Duplicate · Automatic redirect · **Create A/B test** · Edit URL · Copy to funnel · Tracking code · **Confetti** (toggle) · Delete.
+
+**Results** (lettered A, B, C…) — terminal outcome pages.
+
+**Messages** (envelope icon) — opens an entirely different canvas: a vertical **email automation sequence builder**. Nodes are `Trigger → Delay → Email`, where the email node has From (sender picker), To (Contact), Subject, and a block-composed body using the same `+` insertion system as pages. Per-node: open-rate stat, "Test" send, `•••` menu. Sequences have their own lifecycle ("Sequence offline" → Publish) and the trigger/logic panel is **gated until the funnel itself is published** ("This is a Funnel draft. Publish this funnel to add logic."). Under each message: "Create sequence."
+
+Reusing the same block editor for pages *and* emails is a significant architectural win — build the editor as a host-agnostic component from the start.
+
+---
+
+## 10. Canvas, viewport, history
+
+- **Device toggle** — mobile ⇄ desktop. Same document, responsive reflow (the quiz grid goes 2×2 → 1×4). Some properties are viewport-scoped ("Take full width on Desktop"), so the property schema needs per-breakpoint overrides for a small allowlist of fields.
+- **Undo / redo** — floating bottom-right, ⌘Z / ⇧⌘Z. Covers content, structure, style, and reorder. Redo appears only when the stack has a forward entry.
+- **Autosave** — no explicit save anywhere; the only commit gesture is Publish (draft vs. live).
+
+---
+
+## 11. Funnel settings
+
+Modal with a left nav: **Overview** (section header) · Social Preview (OG image + title + description with live card preview, "< 60 chars", "1200 × 630px") · Favicon · Language · Cookie banner · **Progress bar** (Show / None, presented as two illustrated cards) · WhatsApp Accounts · Senders · Affiliate banner · Funnel Sharing.
+
+---
+
+## 12. Data model
+
+```
+Workspace
+└── Funnel                 { id, name, themeId, settings, publishedAt }
+    ├── Page[]             { id, index, name, slug, redirect, abTest,
+    │                        trackingCode, confetti }
+    ├── ResultPage[]       { id, letter, name }
+    ├── Message[]          { id, name, sequence: Node[], status }
+    └── Theme[]            { id, name, font, colors[4], radius,
+                             transition, disableLoadAnimation }
+
+Block (recursive, ordered)
+  id
+  type            'text' | 'button' | 'image' | 'quiz' | 'answer' | …
+  parentId
+  order
+  content         type-specific payload (rich text HTML, src, …)
+  style           { size, bold, italic, underline, align,
+                    color: ColorRef, background: ColorRef,
+                    spacingTop, spacingBottom }
+  styleOverrides  { desktop?: Partial<style> }
+  trackingId      'question_5l77fz'
+  linking?        { mode: 'always' | 'rules',
+                    always?: Target,
+                    rules?: Rule[],
+                    fallback?: Target }
+  resultRef?      ResultPageId | null
+  children        Block[]
+
+Target = { kind: 'next' } | { kind: 'page', id }
+       | { kind: 'result', id } | { kind: 'url', href }
+       | { kind: 'scroll', blockId }
+
+Rule   = { conditions: Condition[], target: Target }   // AND-joined
+Condition = { sourceTrackingId, operator, value }      // operator inferred
+```
+
+---
+
+## 13. Phased roadmap
+
+**Phase 0 — Foundations (2–3 wks).** App shell, three-pane layout, block tree data model + normalized store, undo/redo middleware, autosave, deep-linkable selection via URL params.
+
+**Phase 1 — Canvas & selection (3–4 wks).** Live renderer, hover/selected/editing state machine, type badges, element toolbar with all five actions + shortcuts, `contentEditable` inline editing, drag-to-reorder. *This is the phase that determines whether the product feels "clean." Do not compress it.*
+
+**Phase 2 — Property panels (3 wks).** The shared control-row library (size stepper with `•••` ramp, B/I/U, align toggle, spacing sliders, three-tab color picker), then compose Text / Button / Image / Divider panels from it.
+
+**Phase 3 — Block library & insertion (2–3 wks).** Two-tier rail takeover, flyout columns, the ✓/✗ live-preview commit, section templates as prebuilt block trees.
+
+**Phase 4 — Quiz & forms (3–4 wks).** Question container + Answer children, nested selection, media/icon picker, Choice / Multiple-Choice / Quiz / Form / Dropdown / Date, Reveal-answers aggregation.
+
+**Phase 5 — Logic engine (3–4 wks).** Page tree with numbering, Result pages, simple linking, then the rule builder with type-inferred operators, funnel-scoped variable resolution, and a runtime evaluator. Add cycle detection and orphan-page warnings here.
+
+**Phase 6 — Theming (2 wks).** Theme CRUD, fork-on-edit, token binding, skeleton preview, font loading.
+
+**Phase 7 — Publish & runtime (3 wks).** Draft/live split, static runtime bundle, response capture, progress bar, cookie banner, social preview, favicon.
+
+**Phase 8 — Messages & automation (4 wks).** Reuse the block editor for email bodies; sequence canvas with Trigger/Delay/Email nodes; test sends.
+
+**Phase 9 — Analytics, CRM, integrations (ongoing).** Per-block funnel drop-off keyed on tracking IDs, contact records, A/B testing, app connections.
+
+---
+
+## 14. Engineering notes
+
+Render the canvas **in-document, not in an iframe** — it's what makes `contentEditable`, hit-testing, and drag-and-drop trivial, and Perspective clearly made this call. Scope styles with CSS custom properties driven by the active theme so a theme swap is a single variable-set update.
+
+Keep the block tree normalized (`byId` + `childIds`) and make every mutation a serializable, invertible command. Undo/redo, autosave, and eventual multiplayer all fall out of that one decision.
+
+Persist the *fallback* on every rule set. An unhandled condition that silently dead-ends is the worst failure mode in this class of product.
+
+Finally, guard the rail context swaps. The pattern is elegant but the coordinate reuse between the property panel and the page tree is genuinely hazardous — I destroyed an image and created a page inside ten minutes of normal clicking, and neither action asked for confirmation.

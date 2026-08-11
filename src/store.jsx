@@ -1,0 +1,457 @@
+import { createContext, useContext, useReducer, useEffect, useRef, useMemo, useCallback } from 'react'
+
+const uid = () => Math.random().toString(36).slice(2,9)
+const trackId = (prefix) => `${prefix}_${Math.random().toString(36).slice(2,7)}`
+
+const makeBlock = (type, extra={}) => {
+  const defaultSlot = (type==='quiz' || type==='answer') ? 2 : 2
+  // text/button use slot 2 (dark) for readability; slot 1 is page bg
+  // quiz/answer also need slot 2 (was slot 1 bug → invisible on #f0f9ff)
+  return {
+  id: uid(),
+  type,
+  parentId: null,
+  order: Date.now(),
+  content: extra.content ?? defaultContent(type),
+  style: {
+    size: type==='text'?'M': 'M',
+    bold:false, italic:false, underline:false,
+    align: type==='text'?'left':'center',
+    color: { kind:'token', slot: defaultSlot },
+    background: { kind:'token', slot:0 },
+    spacingTop: 8, spacingBottom: 8,
+    lineHeight: 1.45,
+    ...extra.style
+  },
+  styleOverrides:{},
+  trackingId: trackId(type),
+  linking: { mode:'always', always:{ kind:'next' } },
+  resultRef: null,
+  children: [],
+  ...extra
+  }
+}
+
+function defaultContent(type){
+  if(type==='text') return 'We help ambitious brands turn visitors into customers — without the guesswork.'
+  if(type==='button') return 'Get my free audit'
+  if(type==='image') return 'https://picsum.photos/seed/persp/640/420'
+  if(type==='divider') return ''
+  if(type==='list') return ['Benefit one — clear outcome','Benefit two — social proof','Benefit three — risk reversal']
+  if(type==='video') return 'https://www.youtube.com/embed/dQw4w9WgXcQ'
+  if(type==='quiz') return { question: 'What best describes your current situation?' }
+  if(type==='answer') return 'Just getting started'
+  if(type==='form') return { placeholder:'Enter your email', label:'Email address' }
+  if(type==='reviews') return { rating:5, text:'“This funnel doubled our conversion rate — absolutely love it!” — Alex, Founder', author:'Alex' }
+  if(type==='logo') return { logos:['ACME','Globex','Soylent','Initech'] }
+  if(type==='testimonial') return { text:'“The best investment we made this year.”', author:'— Jamie, CEO' }
+  if(type==='slider') return 'https://picsum.photos/seed/slider/640/360'
+  if(type==='graphic') return 'https://picsum.photos/seed/graphic/640/360'
+  if(type==='webinar') return { title:'Live Webinar: Growth Secrets', date:'June 12,  3PM CET' }
+  if(type==='faq') return [{ q:'How does it work?', a:'Connect your funnel and start capturing leads in minutes.'},{ q:'Is there a free trial?', a:'Yes, 14 days free.'}]
+  if(type==='countdown') return { target:'2026-12-31', label:'Offer ends in' }
+  if(type==='loader') return { label:'Loading your personal result…' }
+  if(type==='embed') return { provider:'Embed', url:'https://example.com' }
+  return ''
+}
+
+const THEMES = [
+  { id:'t1', name:'Editorial', font:'Fraunces', colors:['#ffffff','#0f0f0f','#2563eb','#f59e0b'], radius:2, transition:'fade', disableAnimation:false, isSystem:false },
+  { id:'t2', name:'Minimal', font:'Inter', colors:['#fafaf8','#111111','#111111','#e8e6e1'], radius:1, transition:'slide', disableAnimation:false, isSystem:true },
+  { id:'t3', name:'Sunset', font:'Fraunces', colors:['#fff7ed','#7c2d12','#ea580c','#facc15'], radius:3, transition:'scale', disableAnimation:false, isSystem:true },
+  { id:'t4', name:'Ocean', font:'Inter', colors:['#f0f9ff','#0c4a6e','#0284c7','#06b6d4'], radius:2, transition:'fade', disableAnimation:false, isSystem:true },
+  { id:'t5', name:'Party', font:'Fraunces', colors:['#fff1f2','#831843','#ec4899','#8b5cf6'], radius:3, transition:'scale', disableAnimation:false, isSystem:true },
+  { id:'t6', name:'AI — Nebula', font:'JetBrains Mono', colors:['#faf5ff','#2e1065','#7c3aed','#a78bfa'], radius:3, transition:'fade', disableAnimation:false, isSystem:true },
+  { id:'t7', name:'AI — Vector', font:'JetBrains Mono', colors:['#010d03','#00ff41','#22c55e','#86efac'], radius:1, transition:'none', disableAnimation:false, isSystem:true },
+]
+
+function initialFunnel(){
+  const a1 = makeBlock('answer', { content:'Just getting started', children:[] })
+  const a2 = makeBlock('answer', { content:'Growing steadily', children:[] })
+  const a3 = makeBlock('answer', { content:'Scaling fast', children:[] })
+  const a4 = makeBlock('answer', { content:'Enterprise level', children:[] })
+  const quiz = makeBlock('quiz', { content:{ question:'What best describes your business right now?' }, children:[a1.id,a2.id,a3.id,a4.id] })
+  a1.parentId=quiz.id; a2.parentId=quiz.id; a3.parentId=quiz.id; a4.parentId=quiz.id
+  const map = {}
+  ;[quiz,a1,a2,a3,a4].forEach(b=>map[b.id]=b)
+  const b1 = makeBlock('text', { content:'The growth quiz', style:{ size:'XL', align:'center', bold:true } })
+  const b2 = makeBlock('text', { content:'Answer 4 quick questions to get a personalized growth plan — tailored to where you are today.', style:{ size:'M', align:'center' } })
+  const b3 = makeBlock('button', { content:'Start the quiz →', style:{ align:'center' } })
+  const b4 = quiz
+  const heroImg = makeBlock('image', { content:'https://picsum.photos/seed/persp-hero/800/520' })
+  const form = makeBlock('form', { content:{ label:'Get your plan', placeholder:'Enter your email' } })
+  const formText = makeBlock('text', { content:'Drop your email and we’ll send the personalized plan in under a minute.', style:{ size:'M', align:'center' } })
+  ;[b1,b2,b3,heroImg,form,formText].forEach(b=>map[b.id]=b)
+  return {
+    id:'f1', name:'Growth Assessment Funnel',
+    themeId:'t1',
+    settings:{ progressBar:true, cookieBanner:false, socialTitle:'Growth Assessment', socialDesc:'Get your personalized growth plan in 45 seconds.', favicon:'', language:'en', funnelBackground:{kind:'token', slot:0} },
+    pages:[
+      { id:'p1', index:1, name:'Welcome', slug:'welcome', confetti:false, blocks:[b1.id,b2.id,b3.id,heroImg.id], background:{kind:'token', slot:1} },
+      { id:'p2', index:2, name:'Question 1', slug:'q1', confetti:false, blocks:[b4.id], background:{kind:'token', slot:1} },
+      { id:'p3', index:3, name:'Lead capture', slug:'capture', confetti:false, blocks:[formText.id, form.id], background:{kind:'token', slot:1} },
+    ],
+    results:[
+      { id:'rA', letter:'A', name:'Starter plan' },
+      { id:'rB', letter:'B', name:'Growth plan' },
+    ],
+    messages:[
+      { id:'m1', name:'Welcome sequence', status:'offline', sequence:[
+        { id:'n1', type:'trigger', label:'Funnel completed' },
+        { id:'n2', type:'delay', label:'Wait 1 hour' },
+        { id:'n3', type:'email', label:'Your plan is ready', from:'hello@perspective.test', to:'Contact', subject:'Your personalized plan', bodyBlocks:[] },
+      ]},
+    ],
+    blocksById: map,
+    themes: THEMES,
+  }
+}
+
+function deepClone(o){ return JSON.parse(JSON.stringify(o)) }
+
+function migratePersisted(saved){
+  try{
+    // merge new system themes (t5+t6+t7) into existing saves
+    if(saved.themes){
+      const have = new Set(saved.themes.map(t=>t.id))
+      THEMES.forEach(t=>{ if(!have.has(t.id)) saved.themes.push(t) })
+    }
+    // ensure funnelBackground and page backgrounds exist
+    if(!saved.settings) saved.settings={}
+    if(!saved.settings.funnelBackground) saved.settings.funnelBackground={kind:'token', slot:0}
+    saved.pages?.forEach(p=>{
+      if(!p.background) p.background={kind:'token', slot:1}
+    })
+    // trim phantom pages 4-6 (keep only first 3 unless user explicitly added)
+    if(saved.pages && saved.pages.length>3){
+      // if pages 4+ are empty default-named, drop them
+      const extra = saved.pages.slice(3)
+      const allExtraEmpty = extra.every(p=> !p.blocks || p.blocks.length===0)
+      if(allExtraEmpty) saved.pages = saved.pages.slice(0,3)
+      // reindex
+      saved.pages.forEach((p,i)=> p.index = i+1)
+    }
+    // fix invisible quiz/answer: slot 1 → slot 2
+    Object.values(saved.blocksById||{}).forEach(b=>{
+      if((b.type==='quiz' || b.type==='answer') && b.style?.color?.kind==='token' && b.style.color.slot===1){
+        b.style.color.slot = 2
+      }
+      // also fix any text/button that somehow got slot 1 light bg visible? keep slot 2 for readability
+      if(b.style?.color?.slot===1 && b.type==='text'){
+        // if text on Ocean (#f0f9ff) white-on-light, migrate to 2
+        const theme = saved.themes?.find(t=> t.id===saved.themeId)
+        if(theme && theme.colors[0]==='#f0f9ff') b.style.color.slot = 2
+      }
+    })
+    // ensure p3 has form if empty
+    const p3 = saved.pages?.[2]
+    if(p3 && (!p3.blocks || p3.blocks.length===0)){
+      const fid = uid(); const tid = uid()
+      const form = { id: fid, type:'form', parentId:null, order:Date.now(), content:{ label:'Get your plan', placeholder:'Enter your email' }, style:{ size:'M', bold:false, italic:false, underline:false, align:'center', color:{kind:'token',slot:2}, background:{kind:'token',slot:0}, spacingTop:8, spacingBottom:8 }, styleOverrides:{}, trackingId: trackId('form'), linking:{mode:'always', always:{kind:'next'}}, resultRef:null, children:[] }
+      const txt = { id: tid, type:'text', parentId:null, order:Date.now()-1, content:'Drop your email and we’ll send the personalized plan in under a minute.', style:{ size:'M', bold:false, italic:false, underline:false, align:'center', color:{kind:'token',slot:2}, background:{kind:'token',slot:0}, spacingTop:8, spacingBottom:8 }, styleOverrides:{}, trackingId: trackId('text'), linking:{mode:'always', always:{kind:'next'}}, resultRef:null, children:[] }
+      saved.blocksById[fid]=form; saved.blocksById[tid]=txt
+      p3.blocks=[tid,fid]
+    }
+  }catch{}
+  return saved
+}
+
+function funnelReducer(state, action){
+  switch(action.type){
+    case 'REHYDRATE': return action.payload
+    case 'SET_FUNNEL_NAME': return { ...state, name: action.name }
+    case 'SET_THEME': return { ...state, themeId: action.id }
+    case 'UPDATE_THEME': {
+      return { ...state, themes: state.themes.map(t=> t.id===action.id ? { ...t, ...action.patch } : t) }
+    }
+    case 'CREATE_THEME': {
+      const nt = { id:uid(), name:'New theme', font:'Inter', colors:['#ffffff','#111111','#2563eb','#f59e0b'], radius:2, transition:'fade', disableAnimation:false, isSystem:false }
+      return { ...state, themes:[nt, ...state.themes], themeId: nt.id }
+    }
+    case 'FORK_THEME': {
+      const src = state.themes.find(t=>t.id===action.id)
+      if(!src) return state
+      const fork = { ...deepClone(src), id:uid(), name: `${src.name} copy`, isSystem:false }
+      return { ...state, themes:[fork, ...state.themes], themeId:fork.id }
+    }
+    case 'DELETE_THEME': {
+      if(state.themes.find(t=>t.id===action.id)?.isSystem) return state
+      const remaining = state.themes.filter(t=>t.id!==action.id)
+      return { ...state, themes: remaining, themeId: remaining[0]?.id ?? state.themeId }
+    }
+    case 'ADD_PAGE': {
+      const np = { id:uid(), index: state.pages.length+1, name:`Page ${state.pages.length+1}`, slug:`page-${state.pages.length+1}`, confetti:false, blocks:[], background:{kind:'token', slot:1} }
+      return { ...state, pages:[...state.pages, np] }
+    }
+    case 'DUPLICATE_PAGE': {
+      const src = state.pages.find(p=>p.id===action.id); if(!src) return state
+      const copy = { ...src, id:uid(), name: `${src.name} copy`, index: state.pages.length+1, blocks: [] }
+      const newBlocks = {}
+      src.blocks.forEach(bid=>{
+        const b = state.blocksById[bid]
+        if(!b) return
+        const nb = { ...deepClone(b), id:uid() }
+        nb.children = []
+        // duplicate quiz answers too
+        if(b.children?.length){
+          nb.children = b.children.map(cid=>{
+            const child = state.blocksById[cid]
+            if(!child) return null
+            const nc = { ...deepClone(child), id:uid(), parentId: nb.id }
+            newBlocks[nc.id]=nc
+            return nc.id
+          }).filter(Boolean)
+        }
+        newBlocks[nb.id]=nb
+        copy.blocks.push(nb.id)
+      })
+      return { ...state, pages:[...state.pages, copy], blocksById:{ ...state.blocksById, ...newBlocks } }
+    }
+    case 'DELETE_PAGE': {
+      if(state.pages.length<=1) return state
+      const pages = state.pages.filter(p=>p.id!==action.id).map((p,i)=>({ ...p, index:i+1 }))
+      return { ...state, pages }
+    }
+    case 'RENAME_PAGE': {
+      return { ...state, pages: state.pages.map(p=> p.id===action.id ? { ...p, name:action.name } : p) }
+    }
+    case 'ADD_RESULT': {
+      const letter = String.fromCharCode(65 + state.results.length)
+      return { ...state, results:[...state.results, { id:uid(), letter, name:`Result ${letter}` }] }
+    }
+    case 'DELETE_RESULT': {
+      return { ...state, results: state.results.filter(r=>r.id!==action.id) }
+    }
+    case 'ADD_BLOCK': {
+      const { pageId, block, afterId } = action
+      const page = state.pages.find(p=>p.id===pageId)
+      if(!page) return state
+      const nb = block
+      const idx = afterId ? page.blocks.indexOf(afterId) : -1
+      const blocks = idx>=0 ? [...page.blocks.slice(0,idx+1), nb.id, ...page.blocks.slice(idx+1)] : [...page.blocks, nb.id]
+      return { ...state, pages: state.pages.map(p=> p.id===pageId ? { ...p, blocks } : p), blocksById:{ ...state.blocksById, [nb.id]: nb, ...(action.extraBlocks||{}) } }
+    }
+    case 'UPSERT_BLOCKS': {
+      return { ...state, blocksById:{ ...state.blocksById, ...action.blocks } }
+    }
+    case 'UPDATE_BLOCK': {
+      const cur = state.blocksById[action.id]; if(!cur) return state
+      return { ...state, blocksById:{ ...state.blocksById, [action.id]: { ...cur, ...action.patch } } }
+    }
+    case 'UPDATE_BLOCK_CONTENT': {
+      const cur = state.blocksById[action.id]; if(!cur) return state
+      return { ...state, blocksById:{ ...state.blocksById, [action.id]: { ...cur, content: action.content } } }
+    }
+    case 'UPDATE_BLOCK_STYLE': {
+      const cur = state.blocksById[action.id]; if(!cur) return state
+      return { ...state, blocksById:{ ...state.blocksById, [action.id]: { ...cur, style:{ ...cur.style, ...action.patch } } } }
+    }
+    case 'DELETE_BLOCK': {
+      const bid = action.id
+      const page = state.pages.find(p=>p.blocks.includes(bid))
+      let nextPages = state.pages
+      let nextById = { ...state.blocksById }
+      // if answer child, remove from parent
+      const blk = state.blocksById[bid]
+      if(blk?.parentId){
+        const parent = nextById[blk.parentId]
+        if(parent) nextById[blk.parentId] = { ...parent, children: parent.children.filter(c=>c!==bid) }
+      }
+      // if quiz, delete its answers
+      if(blk?.children?.length){
+        blk.children.forEach(cid=> delete nextById[cid])
+      }
+      delete nextById[bid]
+      if(page){
+        nextPages = state.pages.map(p=> p.id===page.id ? { ...p, blocks: p.blocks.filter(x=>x!==bid) } : p)
+      }
+      return { ...state, pages: nextPages, blocksById: nextById }
+    }
+    case 'DUPLICATE_BLOCK': {
+      const src = state.blocksById[action.id]; if(!src) return state
+      const copy = { ...deepClone(src), id:uid(), trackingId: trackId(src.type) }
+      copy.children = []
+      const extra={}
+      if(src.children?.length){
+        copy.children = src.children.map(cid=>{
+          const c = state.blocksById[cid]; if(!c) return null
+          const nc = { ...deepClone(c), id:uid(), parentId:copy.id, trackingId: trackId(c.type) }
+          extra[nc.id]=nc; return nc.id
+        }).filter(Boolean)
+      }
+      // insert after src if top-level
+      const page = state.pages.find(p=>p.blocks.includes(action.id))
+      if(page){
+        const idx = page.blocks.indexOf(action.id)
+        const blocks = [...page.blocks.slice(0,idx+1), copy.id, ...page.blocks.slice(idx+1)]
+        return { ...state, pages: state.pages.map(p=> p.id===page.id ? { ...p, blocks } : p), blocksById:{ ...state.blocksById, [copy.id]:copy, ...extra } }
+      }
+      // child answer duplicate -> add to parent quiz
+      if(src.parentId){
+        const parent = state.blocksById[src.parentId]
+        if(parent){
+          const children = [...parent.children.slice(0, parent.children.indexOf(src.id)+1), copy.id, ...parent.children.slice(parent.children.indexOf(src.id)+1)]
+          return { ...state, blocksById:{ ...state.blocksById, [copy.id]:{ ...copy, parentId: src.parentId }, [parent.id]:{ ...parent, children }, ...extra } }
+        }
+      }
+      return { ...state, blocksById:{ ...state.blocksById, [copy.id]:copy, ...extra } }
+    }
+    case 'MOVE_BLOCK': {
+      const { pageId, from, to } = action
+      const page = state.pages.find(p=>p.id===pageId); if(!page) return state
+      const arr = [...page.blocks]
+      const [moved] = arr.splice(from,1)
+      arr.splice(to,0,moved)
+      return { ...state, pages: state.pages.map(p=> p.id===pageId ? { ...p, blocks: arr } : p) }
+    }
+    case 'UPDATE_PAGE_BACKGROUND': {
+      return { ...state, pages: state.pages.map(p=> p.id===action.pageId ? { ...p, background: action.background } : p) }
+    }
+    case 'UPDATE_FUNNEL_BACKGROUND': {
+      return { ...state, settings:{ ...state.settings, funnelBackground: action.background } }
+    }
+    default: return state
+  }
+}
+
+const FunnelContext = createContext(null)
+export const useFunnel = () => useContext(FunnelContext)
+
+export function FunnelProvider({ children }){
+  const [funnel, dispatch] = useReducer(funnelReducer, undefined, initialFunnel)
+  const [past, setPast] = useReducer((s,a)=>{
+    if(a.type==='PUSH') return [...s.slice(-49), a.snapshot]
+    if(a.type==='POP') return s.slice(0,-1)
+    if(a.type==='CLEAR') return []
+    return s
+  }, [])
+  const [future, setFuture] = useReducer((s,a)=>{
+    if(a.type==='PUSH') return [...s, a.snapshot]
+    if(a.type==='POP') return s.slice(0,-1)
+    if(a.type==='CLEAR') return []
+    return s
+  }, [])
+  const [selectedPageId, setSelectedPageId] = useReducer((s,a)=>a??s, null)
+  const [selectedBlockId, setSelectedBlockId] = useReducer((s,a)=> a===undefined? null : a, null)
+  const [device, setDevice] = useReducer((s,a)=>a??s, 'mobile')
+  const [published, setPublished] = useReducer((s,a)=>!s, false)
+  const skipHistoryRef = useRef(false)
+  const hydratedRef = useRef(false)
+  const didReadUrlRef = useRef(false)
+
+  // hydrate from localStorage + read deep link (do not overwrite saved data with initial)
+  useEffect(()=>{
+    try{
+      const sp = new URLSearchParams(location.search)
+      const urlPage = sp.get('pageId')
+      const urlComp = sp.get('componentId')
+      if(urlPage) { setSelectedPageId(urlPage); didReadUrlRef.current = true }
+      if(urlComp) setSelectedBlockId(urlComp)
+      const raw = localStorage.getItem('perspective:funnel:v3') || localStorage.getItem('perspective:funnel:v2')
+      if(raw){
+        let saved = JSON.parse(raw)
+        // v4 migrations: fix phantom pages, invisible quiz, empty p3
+        saved = migratePersisted(saved)
+        dispatch({ type:'REHYDRATE', payload: saved })
+        // if no url page, default to first page of saved funnel
+        if(!urlPage && saved.pages?.[0]) setSelectedPageId(saved.pages[0].id)
+      } else {
+        // no saved data, default to p1 if no url
+        if(!urlPage) setSelectedPageId('p1')
+      }
+    }catch{
+      if(!didReadUrlRef.current) setSelectedPageId('p1')
+    }
+    // mark hydrated after a tick to allow REHYDRATE to flush
+    const t = setTimeout(()=>{ hydratedRef.current = true }, 0)
+    return ()=> clearTimeout(t)
+  },[])
+  // autosave only after hydration
+  useEffect(()=>{
+    if(!hydratedRef.current) return
+    try{ localStorage.setItem('perspective:funnel:v3', JSON.stringify(funnel)) }catch{}
+  },[funnel])
+  // deep link write — only after initial read
+  useEffect(()=>{
+    if(!hydratedRef.current) return
+    if(!selectedPageId) return
+    const url = new URL(location.href)
+    url.searchParams.set('pageId', selectedPageId)
+    if(selectedBlockId) url.searchParams.set('componentId', selectedBlockId); else url.searchParams.delete('componentId')
+    history.replaceState(null,'',url)
+  },[selectedPageId, selectedBlockId])
+
+  const dispatchWithHistory = useCallback((action)=>{
+    const historyActions = new Set(['UPDATE_BLOCK','UPDATE_BLOCK_CONTENT','UPDATE_BLOCK_STYLE','ADD_BLOCK','DELETE_BLOCK','DUPLICATE_BLOCK','MOVE_BLOCK','ADD_PAGE','DELETE_PAGE','RENAME_PAGE','ADD_RESULT','DELETE_RESULT','UPDATE_THEME','CREATE_THEME','FORK_THEME','DELETE_THEME','SET_FUNNEL_NAME','SET_THEME','UPSERT_BLOCKS','UPDATE_PAGE_BACKGROUND','UPDATE_FUNNEL_BACKGROUND'])
+    if(historyActions.has(action.type) && !skipHistoryRef.current){
+      setPast({ type:'PUSH', snapshot: deepClone(funnel) })
+      setFuture({ type:'CLEAR' })
+    }
+    dispatch(action)
+  },[funnel])
+
+  const undo = useCallback(()=>{
+    if(!past.length) return
+    const prev = past[past.length-1]
+    setFuture({ type:'PUSH', snapshot: deepClone(funnel) })
+    setPast({ type:'POP' })
+    skipHistoryRef.current=true
+    dispatch({ type:'REHYDRATE', payload: prev })
+    setTimeout(()=> skipHistoryRef.current=false,0)
+  },[past,funnel])
+  const redo = useCallback(()=>{
+    if(!future.length) return
+    const nxt = future[future.length-1]
+    setPast({ type:'PUSH', snapshot: deepClone(funnel) })
+    setFuture({ type:'POP' })
+    skipHistoryRef.current=true
+    dispatch({ type:'REHYDRATE', payload: nxt })
+    setTimeout(()=> skipHistoryRef.current=false,0)
+  },[future,funnel])
+
+  useEffect(()=>{
+    const onKey=(e)=>{
+      const isEditable = e.target?.isContentEditable || e.target?.tagName==='INPUT' || e.target?.tagName==='TEXTAREA' || e.target?.tagName==='SELECT'
+      if((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==='z'){
+        if(isEditable) return
+        e.preventDefault()
+        if(e.shiftKey) redo(); else undo()
+      }
+      if((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==='d' && selectedBlockId){
+        e.preventDefault()
+        dispatchWithHistory({ type:'DUPLICATE_BLOCK', id:selectedBlockId })
+      }
+      if((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==='c' && selectedBlockId){
+        // let native copy happen but also store to clipboard async
+        try{
+          const blk = funnel.blocksById[selectedBlockId]
+          if(blk) navigator.clipboard.writeText(JSON.stringify(blk))
+        }catch{}
+      }
+      if((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==='v'){
+        if(isEditable) return
+        // paste is handled in Canvas; prevent default to avoid double
+      }
+      if(e.key==='Escape'){
+        setSelectedBlockId(null)
+      }
+      if((e.key==='Delete' || e.key==='Backspace') && selectedBlockId && !isEditable){
+        e.preventDefault()
+        dispatchWithHistory({ type:'DELETE_BLOCK', id:selectedBlockId })
+        setSelectedBlockId(null)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return ()=> window.removeEventListener('keydown', onKey)
+  },[undo,redo,selectedBlockId,dispatchWithHistory,funnel.blocksById])
+
+  const value = useMemo(()=>({
+    funnel, dispatch: dispatchWithHistory, rawDispatch: dispatch,
+    selectedPageId, setSelectedPageId, selectedBlockId, setSelectedBlockId,
+    device, setDevice, published, setPublished,
+    undo, redo, canUndo: past.length>0, canRedo: future.length>0,
+    makeBlock
+  }),[funnel,dispatchWithHistory,selectedPageId,selectedBlockId,device,published,undo,redo,past.length,future.length])
+
+  return <FunnelContext.Provider value={value}>{children}</FunnelContext.Provider>
+}
